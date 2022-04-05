@@ -15,9 +15,6 @@ from player import Player
 
 class Random(Player):
 
-    def __init__(self, passrate):
-        self.passrate = passrate
-        
     def handle_game_start(self, color, board):
         """
         This function is called at the start of the game.
@@ -78,8 +75,7 @@ class Random(Player):
         :condition: If you intend to move a pawn for promotion other than Queen, please specify the promotion parameter
         :example: choice = chess.Move(chess.G7, chess.G8, promotion=chess.KNIGHT) *default is Queen
         """
-        if random.random() < self.passrate:
-            return None
+
         return random.choice(possible_moves)
         
     def handle_move_result(self, requested_move, taken_move, reason, captured_piece, captured_square):

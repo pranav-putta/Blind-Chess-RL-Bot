@@ -16,6 +16,7 @@ from player import load_player
 from game import Game
 from datetime import datetime
 import time
+import inspect
 
 
 def play_local_game(white_player, black_player, player_names):
@@ -110,8 +111,11 @@ def play_turn(game, player, turn, move_number, output, output_true):
     player.handle_move_result(requested_move, taken_move, reason, captured_square is not None,
                               captured_square)
 
-    output.write("##################################--Move requested: {} -- Move taken: {}\n".format(requested_move, taken_move))
-    output_true.write("##################################--Move requested: {} -- Move taken: {}\n\n".format(requested_move, taken_move))
+    output.write(
+        "##################################--Move requested: {} -- Move taken: {}\n".format(requested_move, taken_move))
+    output_true.write(
+        "##################################--Move requested: {} -- Move taken: {}\n\n".format(requested_move,
+                                                                                              taken_move))
     if turn:
         format_write_board(output, game.white_board)
     else:
@@ -200,14 +204,23 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Allows you to play against a bot. Useful for testing and debugging.')
     parser.add_argument('first_path', help='Path to first bot source file.')
     parser.add_argument('second_path', help='Path to second bot source file.')
+    parser.add_argument('-agent_args', help='Arguments to pass to agent', default='')
     # parser.add_argument('--color', default='random', choices=['white', 'black', 'random'],
     #                    help='The color you want to play as.')
     args = parser.parse_args()
+    agent_args = args.agent_args.split(' ')
 
     name_one, constructor_one = load_player(args.first_path)
-    player_one = constructor_one()
+    if len(inspect.signature(constructor_one.__init__).parameters) == len(agent_args) + 1:
+        player_one = constructor_one(*agent_args)
+    else:
+        player_one = constructor_one()
+
     name_two, constructor_two = load_player(args.second_path)
-    player_two = constructor_two()
+    if len(inspect.signature(constructor_two.__init__).parameters) == len(agent_args) + 1:
+        player_two = constructor_two(*agent_args)
+    else:
+        player_two = constructor_two()
 
     players = [player_one, player_two]
     player_names = [name_one, name_two]
