@@ -123,15 +123,19 @@ class StockfishAgent(Player):
                 return chess.Move(attacker_square, enemy_king_square)
 
         # otherwise, try to move with the stockfish chess engine
+        self.format_print_board(self.board)
+
         try:
             self.board.turn = self.color
             self.board.clear_stack()
             result = self.engine.play(self.board, chess.engine.Limit(time=0.5))
+            print('Stockfish Engine lives')
             return result.move
         except chess.engine.EngineTerminatedError:
             print('Stockfish Engine died')
         except chess.engine.EngineError:
             print('Stockfish Engine bad state at "{}"'.format(self.board.fen()))
+
 
         # if all else fails, pass
         return None
@@ -162,3 +166,29 @@ class StockfishAgent(Player):
             self.engine.quit()
         except chess.engine.EngineTerminatedError:
             pass
+
+    def format_print_board(self, board):
+        rows = ['8', '7', '6', '5', '4', '3', '2', '1']
+        fen = board.board_fen()
+
+        fb = "   A   B   C   D   E   F   G   H  "
+        fb += rows[0]
+        ind = 1
+        for f in fen:
+            if f == '/':
+                fb += '|' + rows[ind]
+                ind += 1
+            elif f.isnumeric():
+                for i in range(int(f)):
+                    fb += '|   '
+            else:
+                fb += '| ' + f + ' '
+        fb += '|'
+
+        ind = 0
+        for i in range(9):
+            for j in range(34):
+                print(fb[ind], end='')
+                ind += 1
+            print('\n', end='')
+        print("")

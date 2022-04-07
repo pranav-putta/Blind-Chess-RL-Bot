@@ -47,7 +47,7 @@ def play_local_game(white_player, black_player, player_names, verbose=True):
 
             if verbose:
                 print("WHITE's Turn [{}]".format(move_number))
-            format_print_board(game.white_board)
+                format_print_board(game.white_board)
 
         else:
             output.write("##################################--BLACK's Turn [{}]\n".format(move_number))
@@ -57,13 +57,15 @@ def play_local_game(white_player, black_player, player_names, verbose=True):
 
             if verbose:
                 print("BLACK's Turn [{}]".format(move_number))
-            format_print_board(game.black_board)
+                format_print_board(game.black_board)
 
         output_true.write("##################################--Current Board State\n")
         format_write_board(output_true, game.truth_board)
 
-        requested_move, taken_move = play_turn(game, players[game.turn], game.turn, move_number, output, output_true)
-        print_game(game, move_number, game.turn, requested_move, taken_move)
+        requested_move, taken_move = play_turn(game, players[game.turn], game.turn, move_number, output, output_true,
+                                               verbose=verbose)
+        if verbose:
+            print_game(game, move_number, game.turn, requested_move, taken_move)
         move_number += 1
 
         if verbose:
@@ -82,7 +84,7 @@ def play_local_game(white_player, black_player, player_names, verbose=True):
     return winner_color, winner_reason
 
 
-def play_turn(game, player, turn, move_number, output, output_true):
+def play_turn(game, player, turn, move_number, output, output_true, verbose=True):
     possible_moves = game.get_moves()
     possible_sense = list(chess.SQUARES)
 
@@ -95,7 +97,8 @@ def play_turn(game, player, turn, move_number, output, output_true):
     sense = player.choose_sense(possible_sense, possible_moves, game.get_seconds_left())
     sense_result = game.handle_sense(sense)
     player.handle_sense_result(sense_result)
-    print_sense(game, turn, sense)
+    if verbose:
+        print_sense(game, turn, sense)
 
     output.write("##################################--Sense Around Square {}\n".format(chess.SQUARE_NAMES[sense]))
     if turn:
@@ -208,10 +211,12 @@ if __name__ == '__main__':
     parser.add_argument('first_path', help='Path to first bot source file.')
     parser.add_argument('second_path', help='Path to second bot source file.')
     parser.add_argument('-agent_args', help='Arguments to pass to agent', default='')
+    parser.add_argument('-num_games', help='Number of games to play', default=1)
     # parser.add_argument('--color', default='random', choices=['white', 'black', 'random'],
     #                    help='The color you want to play as.')
     args = parser.parse_args()
     agent_args = args.agent_args.split(' ')
+    num_games = int(args.num_games)
 
     name_one, constructor_one = load_player(args.first_path)
     if len(inspect.signature(constructor_one.__init__).parameters) == len(agent_args) + 1:
@@ -235,7 +240,7 @@ if __name__ == '__main__':
             player_names.reverse()
 
     wins = 0
-    for i in range(50):
+    for i in range(num_games):
         win_color, win_reason = play_local_game(players[0], players[1], player_names, verbose=False)
         if win_color == chess.WHITE:
             wins += 1
@@ -244,4 +249,4 @@ if __name__ == '__main__':
             print(win_reason)
         else:
             print('Draw!')
-    print(wins / 50)
+    print(f"WHITE win rate: {wins / num_games}")
