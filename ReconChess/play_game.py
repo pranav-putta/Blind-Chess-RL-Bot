@@ -19,7 +19,7 @@ import time
 import inspect
 
 
-def play_local_game(white_player, black_player, player_names):
+def play_local_game(white_player, black_player, player_names, verbose=True):
     players = [black_player, white_player]
 
     game = Game()
@@ -45,7 +45,8 @@ def play_local_game(white_player, black_player, player_names):
             format_write_board(output, game.white_board)
             output_true.write("##################################--WHITE's Turn [{}]\n".format(move_number))
 
-            print("WHITE's Turn [{}]".format(move_number))
+            if verbose:
+                print("WHITE's Turn [{}]".format(move_number))
             format_print_board(game.white_board)
 
         else:
@@ -54,7 +55,8 @@ def play_local_game(white_player, black_player, player_names):
             format_write_board(output, game.black_board)
             output_true.write("##################################--BLACK's Turn [{}]\n".format(move_number))
 
-            print("BLACK's Turn [{}]".format(move_number))
+            if verbose:
+                print("BLACK's Turn [{}]".format(move_number))
             format_print_board(game.black_board)
 
         output_true.write("##################################--Current Board State\n")
@@ -64,7 +66,8 @@ def play_local_game(white_player, black_player, player_names):
         print_game(game, move_number, game.turn, requested_move, taken_move)
         move_number += 1
 
-        print("==================================\n")
+        if verbose:
+            print("==================================\n")
 
     winner_color, winner_reason = game.get_winner()
 
@@ -231,10 +234,14 @@ if __name__ == '__main__':
             players.reverse()
             player_names.reverse()
 
-    win_color, win_reason = play_local_game(players[0], players[1], player_names)
-
-    print('Game Over!')
-    if win_color is not None:
-        print(win_reason)
-    else:
-        print('Draw!')
+    wins = 0
+    for i in range(50):
+        win_color, win_reason = play_local_game(players[0], players[1], player_names, verbose=False)
+        if win_color == chess.WHITE:
+            wins += 1
+        print('Game Over!')
+        if win_color is not None:
+            print(win_reason)
+        else:
+            print('Draw!')
+    print(wins / 50)

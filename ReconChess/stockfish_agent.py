@@ -11,23 +11,42 @@ Source:         Adapted from recon-chess (https://pypi.org/project/reconchess/)
 
 import random
 import chess
+import chess.engine
+import os
 from player import Player
 
+STOCKFISH_ENV_VAR = 'STOCKFISH_EXECUTABLE'
 
-class PerfectInfo(Player):
 
-    def __init__(self, pass_rate):
+class StockfishAgent(Player):
+
+    def __init__(self):
         super().__init__()
-        self.pass_rate = pass_rate
+        self.board = None
+        self.color = None
+        self.my_piece_captured_square = None
 
-    def handle_game_start(self, color, board):
+        # if STOCKFISH_ENV_VAR not in os.environ:
+        #   raise KeyError(
+        #      'TroutBot requires an environment variable called "{}" pointing to the Stockfish executable'.format(
+        #         STOCKFISH_ENV_VAR))
+
+        #stockfish_path = os.environ[STOCKFISH_ENV_VAR]
+        stockfish_path = '/usr/local/Cellar/stockfish/14.1/bin/stockfish'
+        if not os.path.exists(stockfish_path):
+            raise ValueError('No stockfish executable found at "{}"'.format(stockfish_path))
+
+        self.engine = chess.engine.SimpleEngine.popen_uci(stockfish_path, setpgrp=True)
+
+    def handle_game_start(self, color, board: chess.Board):
         """
         This function is called at the start of the game.
 
         :param color: chess.BLACK or chess.WHITE -- your color assignment for the game
         :param board: chess.Board -- initial board state
         """
-        pass
+        self.board = board
+        self.color = color
 
     def handle_opponent_move_result(self, captured_piece, captured_square):
         """
@@ -36,7 +55,9 @@ class PerfectInfo(Player):
         :param captured_piece: bool - true if your opponents captured your piece with their last move
         :param captured_square: chess.Square - position where your piece was captured
         """
-        pass
+        self.my_piece_captured_square = captured_square
+        if captured_piece:
+            self.board.remove_piece_at(captured_square)
 
     def choose_sense(self, possible_sense, possible_moves, seconds_left):
         """
@@ -49,8 +70,18 @@ class PerfectInfo(Player):
         :return: chess.SQUARE -- the center of 3x3 section of the board you want to sense
         :example: choice = chess.A1
         """
-        if random.random() < self.pass_rate:
-            return None
+        if self.my_piece_captured_square:
+            return self.my_piece_captured_square
+
+            # if we might capture a piece when we move, sense where the capture will occur
+        future_move = self.choose_move(possible_moves, seconds_left)
+        if future_move is not None and self.board.piece_at(future_move.to_square) is not None:
+            return future_move.to_square
+
+        # otherwise, just randomly choose a sense action, but don't sense on a square where our pieces are located
+        for square, piece in self.board.piece_map().items():
+            if piece.color == self.color:
+                possible_sense.remove(square)
         return random.choice(possible_sense)
 
     def handle_sense_result(self, sense_result):
@@ -67,7 +98,8 @@ class PerfectInfo(Player):
             (A6, None), (B6, None), (C8, None)
         ]
         """
-        pass
+        for square, piece in sense_result:
+            self.board.set_piece_at(square, piece)
 
     def choose_move(self, possible_moves, seconds_left):
         """
@@ -82,7 +114,27 @@ class PerfectInfo(Player):
         :condition: If you intend to move a pawn for promotion other than Queen, please specify the promotion parameter
         :example: choice = chess.Move(chess.G7, chess.G8, promotion=chess.KNIGHT) *default is Queen
         """
-        return random.choice(possible_moves)
+        enemy_king_square = self.board.king(not self.color)
+        if enemy_king_square:
+            # if there are any ally pieces that can take king, execute one of those moves
+            enemy_king_attackers = self.board.attackers(self.color, enemy_king_square)
+            if enemy_king_attackers:
+                attacker_square = enemy_king_attackers.pop()
+                return chess.Move(attacker_square, enemy_king_square)
+
+        # otherwise, try to move with the stockfish chess engine
+        try:
+            self.board.turn = self.color
+            self.board.clear_stack()
+            result = self.engine.play(self.board, chess.engine.Limit(time=0.5))
+            return result.move
+        except chess.engine.EngineTerminatedError:
+            print('Stockfish Engine died')
+        except chess.engine.EngineError:
+            print('Stockfish Engine bad state at "{}"'.format(self.board.fen()))
+
+        # if all else fails, pass
+        return None
 
     def handle_move_result(self, requested_move, taken_move, reason, captured_piece, captured_square):
         """
@@ -95,7 +147,8 @@ class PerfectInfo(Player):
         :param captured_piece: bool -- true if you captured your opponents piece
         :param captured_square: chess.Square -- position where you captured the piece
         """
-        pass
+        if taken_move is not None:
+            self.board.push(taken_move)
 
     def handle_game_end(self, winner_color, win_reason):  # possible GameHistory object...
         """
@@ -104,4 +157,8 @@ class PerfectInfo(Player):
         :param winner_color: Chess.BLACK/chess.WHITE -- the winning color
         :param win_reason: String -- the reason for the game ending
         """
-        pass
+        try:
+            # if the engine is already terminated then this call will throw an exception
+            self.engine.quit()
+        except chess.engine.EngineTerminatedError:
+            pass

@@ -18,7 +18,7 @@ class RandomX(Player):
 
     def __init__(self, pass_rate):
         super().__init__()
-        self.pass_rate = pass_rate
+        self.pass_rate = float(pass_rate)
 
     def handle_game_start(self, color, board):
         """
@@ -49,8 +49,7 @@ class RandomX(Player):
         :return: chess.SQUARE -- the center of 3x3 section of the board you want to sense
         :example: choice = chess.A1
         """
-        if random.random() < self.pass_rate:
-            return None
+
         return random.choice(possible_sense)
 
     def handle_sense_result(self, sense_result):
@@ -82,6 +81,8 @@ class RandomX(Player):
         :condition: If you intend to move a pawn for promotion other than Queen, please specify the promotion parameter
         :example: choice = chess.Move(chess.G7, chess.G8, promotion=chess.KNIGHT) *default is Queen
         """
+        if random.random() < self.pass_rate:
+            return None
         return random.choice(possible_moves)
 
     def handle_move_result(self, requested_move, taken_move, reason, captured_piece, captured_square):
