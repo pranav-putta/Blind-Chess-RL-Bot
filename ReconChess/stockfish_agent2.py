@@ -18,7 +18,7 @@ from player import Player
 STOCKFISH_ENV_VAR = 'STOCKFISH_EXECUTABLE'
 
 
-class StockfishAgent(Player):
+class StockfishAgent2(Player):
 
     def __init__(self):
         super().__init__()
@@ -83,6 +83,17 @@ class StockfishAgent(Player):
             if piece.color == self.color:
                 possible_sense.remove(square)
         return random.choice(possible_sense)
+    
+    def number_to_square(self, number):
+        file = number % 8
+        rank = (number - file) // 8
+        return chess.square(file, rank)
+    
+    def square_to_number(self, square):
+        return 8 * chess.square_rank(square) + chess.square_file(square)
+    
+    def square_parity(self, s):
+        return (chess.square_file(s) + chess.square_rank(s)) % 2
 
     def handle_sense_result(self, sense_result):
         """
@@ -99,7 +110,37 @@ class StockfishAgent(Player):
         ]
         """
         for square, piece in sense_result:
-            self.board.set_piece_at(square, piece)
+            parity = -1
+            piece_update = None
+            if piece != None and piece.color != self.color:
+                piece_update = piece.piece_type
+                if piece.piece_type == chess.BISHOP:
+                    piece_update = piece.piece_type
+                    parity = (chess.square_file(square) + chess.square_rank(square)) % 2
+            
+            if piece_update != None:
+                squares = self.board.pieces(piece.piece_type, piece.color)
+
+                # no reason to update the board if the piece is already where we expect
+                if self.board.piece_at(square) == piece:
+                    continue
+                    
+                # if we see a piece that we didn't know was on the board, just write it in
+                if len(squares) == 0:
+                    self.board.set_piece_at(square, piece)
+
+                l = list(squares)
+                choice = random.choice(l)
+                while choice == self.square_to_number(square) and (parity == -1 or parity != self.square_parity(self.number_to_square(choice))):
+                    choice = random.choice(l)
+                choice = self.number_to_square(choice)
+
+                self.board.set_piece_at(choice, None)
+
+                self.board.set_piece_at(square, piece)
+                self.format_print_board(self.board)
+            else:
+                self.board.set_piece_at(square, piece)
 
     def choose_move(self, possible_moves, seconds_left):
         """
@@ -128,7 +169,7 @@ class StockfishAgent(Player):
         try:
             self.board.turn = self.color
             self.board.clear_stack()
-            result = self.engine.play(self.board, chess.engine.Limit(time=0.5))
+            result = self.engine.play(self.board, chess.engine.Limit(time=0.55))
             print('Stockfish Engine lives')
             return result.move
         except chess.engine.EngineTerminatedError:
