@@ -112,6 +112,7 @@ class StockfishAgent2(Player):
         for square, piece in sense_result:
             parity = -1
             piece_update = None
+            original_piece = self.board.piece_at(square)
             if piece != None and piece.color != self.color:
                 piece_update = piece.piece_type
                 if piece.piece_type == chess.BISHOP:
@@ -138,8 +139,43 @@ class StockfishAgent2(Player):
 
                     self.board.set_piece_at(choice, None)
                     self.board.set_piece_at(square, piece)
+
+                    if original_piece == chess.KING:
+                        print("RELOCATING KING")
+                        centerx = chess.square_file(square)
+                        centery = chess.square_rank(square)
+                        self.relocate_king(centerx, centery)
+
             else:
                 self.board.set_piece_at(square, piece)
+
+                if original_piece == chess.KING:
+                    print("RELOCATING KING")
+                    centerx = chess.square_file(square)
+                    centery = chess.square_rank(square)
+                    self.relocate_king(centerx, centery)
+
+    def relocate_king(self, centerx, centery):
+        for radius in range(1, 9):
+            for x in range(centerx - radius, centerx + radius + 1):
+                if self.board.piece_at(chess.square(x, centery - radius)) == None:
+                    self.set_piece(x, centery - radius, chess.KING)
+                    return
+                if self.board.piece_at(chess.square(x, centery + radius)) == None:
+                    self.set_piece(x, centery + radius, chess.KING)
+                    return
+
+            for y in range(centery - radius + 1, centery + radius - 1):
+                if self.board.piece_at(centerx - radius, y) == None:
+                    self.set_piece(centerx - radius, y, chess.KING)
+                    return
+                if self.board.piece_at(centerx + radius, y) == None:
+                    self.set_piece(centerx + radius, y, chess.KING)
+                    return
+
+    def set_piece(self, x, y, piece):
+        if x >= 0 and x < 8 and y >= 0 and y < 8:
+            self.board.set_piece_at(chess.square(x, y), piece)
 
     def choose_move(self, possible_moves, seconds_left):
         """
@@ -168,6 +204,10 @@ class StockfishAgent2(Player):
             self.board.turn = self.color
             self.board.clear_stack()
             result = self.engine.play(self.board, chess.engine.Limit(time=0.55))
+            if len(self.board.pieces(chess.KING, not self.color)) == 0:
+                print("KING NOT ACTUALLY THERE")
+                self.relocate_king(chess.square_file(enemy_king_square), chess.square_rank(enemy_king_square))
+            print(result)
             print('Stockfish2 Engine lives')
             self.format_print_board(self.board)
             return result.move
