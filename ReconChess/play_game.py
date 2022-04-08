@@ -217,6 +217,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     agent_args = args.agent_args.split(' ')
     num_games = int(args.num_games)
+    wins = 0
 
     for i in range(num_games):
         name_one, constructor_one = load_player(args.first_path)
@@ -240,7 +241,6 @@ if __name__ == '__main__':
                 players.reverse()
                 player_names.reverse()
 
-        wins = 0
         win_color, win_reason = play_local_game(players[0], players[1], player_names, verbose=False)
         if win_color == chess.WHITE:
             wins += 1

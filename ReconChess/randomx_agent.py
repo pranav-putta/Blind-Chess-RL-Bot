@@ -81,6 +81,7 @@ class RandomX(Player):
         :condition: If you intend to move a pawn for promotion other than Queen, please specify the promotion parameter
         :example: choice = chess.Move(chess.G7, chess.G8, promotion=chess.KNIGHT) *default is Queen
         """
+        print("RandomX Agent lives")
         if random.random() < self.pass_rate:
             return None
         return random.choice(possible_moves)

@@ -31,7 +31,7 @@ class StockfishAgent2(Player):
         #      'TroutBot requires an environment variable called "{}" pointing to the Stockfish executable'.format(
         #         STOCKFISH_ENV_VAR))
 
-        #stockfish_path = os.environ[STOCKFISH_ENV_VAR]
+        # stockfish_path = os.environ[STOCKFISH_ENV_VAR]
         self.stockfish_path = '/usr/local/Cellar/stockfish/14.1/bin/stockfish'
         if not os.path.exists(self.stockfish_path):
             raise ValueError('No stockfish executable found at "{}"'.format(self.stockfish_path))
@@ -83,15 +83,15 @@ class StockfishAgent2(Player):
             if piece.color == self.color:
                 possible_sense.remove(square)
         return random.choice(possible_sense)
-    
+
     def number_to_square(self, number):
         file = number % 8
         rank = (number - file) // 8
         return chess.square(file, rank)
-    
+
     def square_to_number(self, square):
         return 8 * chess.square_rank(square) + chess.square_file(square)
-    
+
     def square_parity(self, s):
         return (chess.square_file(s) + chess.square_rank(s)) % 2
 
@@ -117,28 +117,27 @@ class StockfishAgent2(Player):
                 if piece.piece_type == chess.BISHOP:
                     piece_update = piece.piece_type
                     parity = (chess.square_file(square) + chess.square_rank(square)) % 2
-            
+
             if piece_update != None:
                 squares = self.board.pieces(piece.piece_type, piece.color)
 
                 # no reason to update the board if the piece is already where we expect
                 if self.board.piece_at(square) == piece:
                     continue
-                    
+
                 # if we see a piece that we didn't know was on the board, just write it in
                 if len(squares) == 0:
                     self.board.set_piece_at(square, piece)
-
-                l = list(squares)
-                choice = random.choice(l)
-                while choice == self.square_to_number(square) and (parity == -1 or parity != self.square_parity(self.number_to_square(choice))):
+                else:
+                    l = list(squares)
                     choice = random.choice(l)
-                choice = self.number_to_square(choice)
+                    while choice == self.square_to_number(square) and (
+                            parity == -1 or parity != self.square_parity(self.number_to_square(choice))):
+                        choice = random.choice(l)
+                    choice = self.number_to_square(choice)
 
-                self.board.set_piece_at(choice, None)
-
-                self.board.set_piece_at(square, piece)
-                self.format_print_board(self.board)
+                    self.board.set_piece_at(choice, None)
+                    self.board.set_piece_at(square, piece)
             else:
                 self.board.set_piece_at(square, piece)
 
@@ -164,21 +163,22 @@ class StockfishAgent2(Player):
                 return chess.Move(attacker_square, enemy_king_square)
 
         # otherwise, try to move with the stockfish chess engine
-        self.format_print_board(self.board)
 
         try:
             self.board.turn = self.color
             self.board.clear_stack()
             result = self.engine.play(self.board, chess.engine.Limit(time=0.55))
-            print('Stockfish Engine lives')
+            print('Stockfish2 Engine lives')
+            self.format_print_board(self.board)
             return result.move
         except chess.engine.EngineTerminatedError:
-            print('Stockfish Engine died')
-            #self.engine = chess.engine.SimpleEngine.popen_uci(self.stockfish_path, setpgrp=True)
+            print('Stockfish2 Engine died')
+            self.format_print_board(self.board)
+            self.engine = chess.engine.SimpleEngine.popen_uci(self.stockfish_path, setpgrp=True)
         except chess.engine.EngineError:
-            print('Stockfish Engine bad state at "{}"'.format(self.board.fen()))
-            #self.engine = chess.engine.SimpleEngine.popen_uci(self.stockfish_path, setpgrp=True)
-
+            print('Stockfish2 Engine bad state at "{}"'.format(self.board.fen()))
+            self.format_print_board(self.board)
+            # self.engine = chess.engine.SimpleEngine.popen_uci(self.stockfish_path, setpgrp=True)
 
         # if all else fails, pass
         return None

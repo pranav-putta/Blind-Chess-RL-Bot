@@ -31,7 +31,7 @@ class StockfishAgent(Player):
         #      'TroutBot requires an environment variable called "{}" pointing to the Stockfish executable'.format(
         #         STOCKFISH_ENV_VAR))
 
-        #stockfish_path = os.environ[STOCKFISH_ENV_VAR]
+        # stockfish_path = os.environ[STOCKFISH_ENV_VAR]
         self.stockfish_path = '/usr/local/Cellar/stockfish/14.1/bin/stockfish'
         if not os.path.exists(self.stockfish_path):
             raise ValueError('No stockfish executable found at "{}"'.format(self.stockfish_path))
@@ -123,7 +123,6 @@ class StockfishAgent(Player):
                 return chess.Move(attacker_square, enemy_king_square)
 
         # otherwise, try to move with the stockfish chess engine
-        self.format_print_board(self.board)
 
         try:
             self.board.turn = self.color
@@ -133,11 +132,14 @@ class StockfishAgent(Player):
             return result.move
         except chess.engine.EngineTerminatedError:
             print('Stockfish Engine died')
-            #self.engine = chess.engine.SimpleEngine.popen_uci(self.stockfish_path, setpgrp=True)
+            self.format_print_board(self.board)
+
+            # self.engine = chess.engine.SimpleEngine.popen_uci(self.stockfish_path, setpgrp=True)
         except chess.engine.EngineError:
             print('Stockfish Engine bad state at "{}"'.format(self.board.fen()))
-            #self.engine = chess.engine.SimpleEngine.popen_uci(self.stockfish_path, setpgrp=True)
+            self.format_print_board(self.board)
 
+            # self.engine = chess.engine.SimpleEngine.popen_uci(self.stockfish_path, setpgrp=True)
 
         # if all else fails, pass
         return None
