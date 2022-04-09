@@ -14,6 +14,7 @@ import chess
 import chess.engine
 import os
 from player import Player
+import util
 
 STOCKFISH_ENV_VAR = 'STOCKFISH_EXECUTABLE'
 
@@ -132,12 +133,12 @@ class StockfishAgent(Player):
             return result.move
         except chess.engine.EngineTerminatedError:
             print('Stockfish Engine died')
-            self.format_print_board(self.board)
+            util.format_print_board(self.board)
 
             # self.engine = chess.engine.SimpleEngine.popen_uci(self.stockfish_path, setpgrp=True)
         except chess.engine.EngineError:
             print('Stockfish Engine bad state at "{}"'.format(self.board.fen()))
-            self.format_print_board(self.board)
+            util.format_print_board(self.board)
 
             # self.engine = chess.engine.SimpleEngine.popen_uci(self.stockfish_path, setpgrp=True)
 
@@ -170,29 +171,3 @@ class StockfishAgent(Player):
             self.engine.quit()
         except chess.engine.EngineTerminatedError:
             pass
-
-    def format_print_board(self, board):
-        rows = ['8', '7', '6', '5', '4', '3', '2', '1']
-        fen = board.board_fen()
-
-        fb = "   A   B   C   D   E   F   G   H  "
-        fb += rows[0]
-        ind = 1
-        for f in fen:
-            if f == '/':
-                fb += '|' + rows[ind]
-                ind += 1
-            elif f.isnumeric():
-                for i in range(int(f)):
-                    fb += '|   '
-            else:
-                fb += '| ' + f + ' '
-        fb += '|'
-
-        ind = 0
-        for i in range(9):
-            for j in range(34):
-                print(fb[ind], end='')
-                ind += 1
-            print('\n', end='')
-        print("")

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 """
-File Name:      random_agent.py
-Authors:        Michael Johnson and Leng Ghuy
+File Name:      stockfish_agent2.py
+Authors:        Pranav Putta and Erik Scarlatescu
 Date:           March 9th, 2019
 
 Description:    Python file of a random bot
@@ -13,9 +13,10 @@ import random
 import chess
 import chess.engine
 import os
+import util
 from player import Player
 
-STOCKFISH_ENV_VAR = 'STOCKFISH_EXECUTABLE'
+STOCKFISH_PATH = '/usr/local/Cellar/stockfish/14.1/bin/stockfish'
 
 
 class StockfishAgent2(Player):
@@ -26,16 +27,13 @@ class StockfishAgent2(Player):
         self.color = None
         self.my_piece_captured_square = None
 
-        # if STOCKFISH_ENV_VAR not in os.environ:
-        #   raise KeyError(
-        #      'TroutBot requires an environment variable called "{}" pointing to the Stockfish executable'.format(
-        #         STOCKFISH_ENV_VAR))
-
-        # stockfish_path = os.environ[STOCKFISH_ENV_VAR]
-        self.stockfish_path = '/usr/local/Cellar/stockfish/14.1/bin/stockfish'
+        self.stockfish_path = STOCKFISH_PATH
         if not os.path.exists(self.stockfish_path):
             raise ValueError('No stockfish executable found at "{}"'.format(self.stockfish_path))
+        self.engine = None
+        self.restart_engine()
 
+    def restart_engine(self):
         self.engine = chess.engine.SimpleEngine.popen_uci(self.stockfish_path, setpgrp=True)
 
     def handle_game_start(self, color, board: chess.Board):
@@ -73,7 +71,7 @@ class StockfishAgent2(Player):
         if self.my_piece_captured_square:
             return self.my_piece_captured_square
 
-            # if we might capture a piece when we move, sense where the capture will occur
+        # if we might capture a piece when we move, sense where the capture will occur
         future_move = self.choose_move(possible_moves, seconds_left)
         if future_move is not None and self.board.piece_at(future_move.to_square) is not None:
             return future_move.to_square
@@ -84,16 +82,24 @@ class StockfishAgent2(Player):
                 possible_sense.remove(square)
         return random.choice(possible_sense)
 
-    def number_to_square(self, number):
-        file = number % 8
-        rank = (number - file) // 8
-        return chess.square(file, rank)
+    def naive_replace_piece(self, square, piece):
+        """
+        Naively removes a piece from the board belief state without breaking the stockfish engine.
+        Stockfish only suggests moves if the board is in a valid state. If for example, we have 2 kings or 9 pawns,
+        stockfish engine will crash.
 
-    def square_to_number(self, square):
-        return 8 * chess.square_rank(square) + chess.square_file(square)
-
-    def square_parity(self, s):
-        return (chess.square_file(s) + chess.square_rank(s)) % 2
+        Naively, if we sense the board and observe pieces missing where we thought they would be, just remove them.
+        Unless that piece is the king. Stockfish crashes when the kings aren't present. So, relocate the king to the nearest location.
+        :param square: square to remove
+        :param piece: piece we're removing
+        :return:
+        """
+        current_piece = self.board.piece_at(square)
+        if current_piece is not None and current_piece.color != self.color and current_piece == chess.KING:
+            print("relocating king")
+            self.relocate_king(square)
+        else:
+            self.board.set_piece_at(square, piece)
 
     def handle_sense_result(self, sense_result):
         """
@@ -110,71 +116,42 @@ class StockfishAgent2(Player):
         ]
         """
         for square, piece in sense_result:
-            parity = -1
-            piece_update = None
-            original_piece = self.board.piece_at(square)
-            if piece != None and piece.color != self.color:
-                piece_update = piece.piece_type
-                if piece.piece_type == chess.BISHOP:
-                    piece_update = piece.piece_type
-                    parity = (chess.square_file(square) + chess.square_rank(square)) % 2
+            if piece is None or piece.color == self.color:
+                self.naive_replace_piece(square, piece)
+                continue
+            # no reason to update the board if the piece is already where we expect
+            if self.board.piece_at(square) == piece:
+                continue
 
-            if piece_update != None:
-                squares = self.board.pieces(piece.piece_type, piece.color)
+            # if we see a piece that we didn't know was on the board, randomly remove extra piece, and set the
+            # observed piece
+            squares = list(self.board.pieces(piece.piece_type, piece.color))
+            if len(squares) > 0:
+                remove_square = random.choice(squares)
+                self.naive_replace_piece(remove_square, None)
+            self.naive_replace_piece(square, piece)
 
-                # no reason to update the board if the piece is already where we expect
-                if self.board.piece_at(square) == piece:
-                    continue
-
-                # if we see a piece that we didn't know was on the board, just write it in
-                if len(squares) == 0:
-                    self.board.set_piece_at(square, piece)
-                else:
-                    l = list(squares)
-                    choice = random.choice(l)
-                    while choice == self.square_to_number(square) and (
-                            parity == -1 or parity != self.square_parity(self.number_to_square(choice))):
-                        choice = random.choice(l)
-                    choice = self.number_to_square(choice)
-
-                    self.board.set_piece_at(choice, None)
-                    self.board.set_piece_at(square, piece)
-
-                    if original_piece == chess.KING:
-                        print("RELOCATING KING")
-                        centerx = chess.square_file(square)
-                        centery = chess.square_rank(square)
-                        self.relocate_king(centerx, centery)
-
-            else:
-                self.board.set_piece_at(square, piece)
-
-                if original_piece == chess.KING:
-                    print("RELOCATING KING")
-                    centerx = chess.square_file(square)
-                    centery = chess.square_rank(square)
-                    self.relocate_king(centerx, centery)
-
-    def relocate_king(self, centerx, centery):
+    def relocate_king(self, square):
+        centerx, centery = chess.square_file(square), chess.square_rank(square)
         for radius in range(1, 9):
             for x in range(centerx - radius, centerx + radius + 1):
-                if self.board.piece_at(chess.square(x, centery - radius)) == None:
+                if self.board.piece_at(chess.square(x, centery - radius)) is None:
                     self.set_piece(x, centery - radius, chess.KING)
                     return
-                if self.board.piece_at(chess.square(x, centery + radius)) == None:
+                if self.board.piece_at(chess.square(x, centery + radius)) is None:
                     self.set_piece(x, centery + radius, chess.KING)
                     return
 
             for y in range(centery - radius + 1, centery + radius - 1):
-                if self.board.piece_at(centerx - radius, y) == None:
+                if self.board.piece_at(centerx - radius, y) is None:
                     self.set_piece(centerx - radius, y, chess.KING)
                     return
-                if self.board.piece_at(centerx + radius, y) == None:
+                if self.board.piece_at(centerx + radius, y) is None:
                     self.set_piece(centerx + radius, y, chess.KING)
                     return
 
     def set_piece(self, x, y, piece):
-        if x >= 0 and x < 8 and y >= 0 and y < 8:
+        if 0 <= x < 8 and 0 <= y < 8:
             self.board.set_piece_at(chess.square(x, y), piece)
 
     def choose_move(self, possible_moves, seconds_left):
@@ -203,22 +180,21 @@ class StockfishAgent2(Player):
         try:
             self.board.turn = self.color
             self.board.clear_stack()
-            result = self.engine.play(self.board, chess.engine.Limit(time=0.55))
             if len(self.board.pieces(chess.KING, not self.color)) == 0:
-                print("KING NOT ACTUALLY THERE")
-                self.relocate_king(chess.square_file(enemy_king_square), chess.square_rank(enemy_king_square))
-            print(result)
+                # this was an L, tried to attack the king and it wasn't there! Relocate it to a new location.
+                self.relocate_king(enemy_king_square)
+            result = self.engine.play(self.board, chess.engine.Limit(time=0.55))
             print('Stockfish2 Engine lives')
-            self.format_print_board(self.board)
+            util.format_print_board(self.board, force_verbose=False)
             return result.move
         except chess.engine.EngineTerminatedError:
             print('Stockfish2 Engine died')
-            self.format_print_board(self.board)
-            self.engine = chess.engine.SimpleEngine.popen_uci(self.stockfish_path, setpgrp=True)
+            util.format_print_board(self.board, force_verbose=True)
+            exit()
+            self.restart_engine()
         except chess.engine.EngineError:
             print('Stockfish2 Engine bad state at "{}"'.format(self.board.fen()))
-            self.format_print_board(self.board)
-            # self.engine = chess.engine.SimpleEngine.popen_uci(self.stockfish_path, setpgrp=True)
+            util.format_print_board(self.board)
 
         # if all else fails, pass
         return None
@@ -249,29 +225,3 @@ class StockfishAgent2(Player):
             self.engine.quit()
         except chess.engine.EngineTerminatedError:
             pass
-
-    def format_print_board(self, board):
-        rows = ['8', '7', '6', '5', '4', '3', '2', '1']
-        fen = board.board_fen()
-
-        fb = "   A   B   C   D   E   F   G   H  "
-        fb += rows[0]
-        ind = 1
-        for f in fen:
-            if f == '/':
-                fb += '|' + rows[ind]
-                ind += 1
-            elif f.isnumeric():
-                for i in range(int(f)):
-                    fb += '|   '
-            else:
-                fb += '| ' + f + ' '
-        fb += '|'
-
-        ind = 0
-        for i in range(9):
-            for j in range(34):
-                print(fb[ind], end='')
-                ind += 1
-            print('\n', end='')
-        print("")

@@ -1,0 +1,8 @@
+white: 'stockfish_agent2'
+white_args: [ ]
+
+black: 'stockfish_agent'
+black_args: [ ]
+
+verbose: False
+num_games: 50
