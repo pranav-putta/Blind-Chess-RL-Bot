@@ -1,7 +1,7 @@
 import util
+import config_loader
 from play_game import *
-
-util.load_config()
+config_loader.load_config()
 from util import ENV
 
 wins = 0

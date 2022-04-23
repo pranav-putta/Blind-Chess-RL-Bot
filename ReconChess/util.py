@@ -1,15 +1,8 @@
 import chess
-import yaml
 from collections import namedtuple
 
 Configuration = namedtuple('Config', 'white, white_args, black, black_args, verbose, num_games')
 ENV = Configuration('human_agent.py', [], 'random_agent.py', [], True, 1)
-
-
-def load_config():
-    global ENV
-    with open('config.yaml') as f:
-        ENV = Configuration(**yaml.safe_load(f))
 
 
 def format_print_board(board, force_verbose=False):
