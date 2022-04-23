@@ -1,8 +1,9 @@
+import base
 import chess
-from collections import namedtuple
-from typing import List
 import numpy as np
 import torch
+from collections import namedtuple
+from typing import List
 
 FeatureSet = namedtuple('FeatureSet',
                         ['num_sq', 'num_pt', 'num_planes', 'inputs', 'max_active_features', 'king_buckets'])
@@ -132,10 +133,26 @@ class SparseBatch:
 
 
 def evaluate(boards: List[chess.Board], model=None):
+    """
+    given a list of board states, generates stockfish evaluation
+    :param boards:
+    :param model:
+    :return:
+    """
     batch = SparseBatch(boards)
     tensors = batch.get_tensors()
 
     if model is None:
         model = torch.load('chess.pt')
-        
+
     return model(*tensors)
+
+
+class StockFishNNEvalEngine(base.EvaluationEngine):
+    def __init__(self):
+        self.model = torch.load('chess.pt')
+
+    def evaluate_boards(self, boards: List[chess.Board]):
+        batch = SparseBatch(boards)
+        tensors = batch.get_tensors()
+        return self.model(*tensors)
