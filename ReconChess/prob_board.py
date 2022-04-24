@@ -7,7 +7,9 @@ import random
 # to convolve uncertainties
 from scipy import signal
 
-order = [4, 20, 3, 19, 7, 23, 0, 16, 6, 22, 1, 17, 5, 21, 2, 18, 8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31]
+order = [4, 20, 3, 19, 7, 23, 0, 16, 6, 22, 1, 17, 5, 21, 2, 18, 8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30,
+         15, 31]
+
 
 class PiecewiseGrid:
     # assumes board is in the standard opening position
@@ -15,7 +17,7 @@ class PiecewiseGrid:
         self.piece_grids = np.zeros((8, 8, 32))
 
         self.piece_types = ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'] + ['p'] * 8
-        self.piece_types = self.piece_types + [ x.upper() for x in self.piece_types ]
+        self.piece_types = self.piece_types + [x.upper() for x in self.piece_types]
 
         self.own_pieces = [False] * 16 + [True] * 16
         self.captured = [False] * 32
@@ -25,10 +27,10 @@ class PiecewiseGrid:
         for p in range(2):
             for y in range(2):
                 for x in range(8):
-                    self.piece_grids[p*y + (1 - p)*(7 - y), x, 16*p + 8*y + x] = 1.0
+                    self.piece_grids[p * y + (1 - p) * (7 - y), x, 16 * p + 8 * y + x] = 1.0
 
         # rook
-        self.piece_grids[:, :, 0] = np.zeros((8,8))
+        self.piece_grids[:, :, 0] = np.zeros((8, 8))
         self.piece_grids[4, 2, 0] = 0.2
         self.piece_grids[5, 5, 0] = 0.1
         self.piece_grids[5, 6, 0] = 0.1
@@ -39,7 +41,7 @@ class PiecewiseGrid:
         self.piece_grids[2, 6, 0] = 0.2
 
         # knight
-        self.piece_grids[:, :, 1] = np.zeros((8,8))
+        self.piece_grids[:, :, 1] = np.zeros((8, 8))
         self.piece_grids[2, 4, 1] = 1.0
         self.piece_grids[3, 3, 1] = 0.3
         self.piece_grids[3, 4, 1] = 0.1
@@ -48,7 +50,7 @@ class PiecewiseGrid:
         self.piece_grids[2, 6, 1] = 0.3
 
         # pawn
-        self.piece_grids[:, :, 11] = np.zeros((8,8))
+        self.piece_grids[:, :, 11] = np.zeros((8, 8))
         self.piece_grids[4, 3, 11] = 1.0
 
     # possible moves represents a probability distribution. it is stored as a list of tuples of the form (move, piece_type, chance)
@@ -204,7 +206,7 @@ class PiecewiseGrid:
         rank, file = np.unravel_index(np.argmax(self.uncertainties), (8, 8))
         return chess.square(file, rank)
 
-        #return self.uncertainties[1:7, 1:7]
+        # return self.uncertainties[1:7, 1:7]
 
     def handle_sense_result(self, sense_result):
         """
@@ -241,9 +243,9 @@ class PiecewiseGrid:
                     piece_index = np.argmax(self.piece_grids[rank, file, :])
                     piece_type = self.piece_types[piece_index]
 
-                    if loc[1] == None: # if it's no longer there, it must have moved
+                    if loc[1] == None:  # if it's no longer there, it must have moved
                         self.enemy_moves = [x for x in self.enemy_moves if x[1] == piece_type]
-                    elif loc[1].symbol() == piece_type: # if it's still there, it can't have moved
+                    elif loc[1].symbol() == piece_type:  # if it's still there, it can't have moved
                         self.enemy_moves = [x for x in self.enemy_moves if x[1] != piece_type]
 
             self.piece_grids = self.piece_grids_temp
@@ -284,10 +286,10 @@ class PiecewiseGrid:
                 handled[piece_index] = True
 
             # todo: pawns need more logic to handle duplicates
-        divider = self.piece_grids.sum((0,1)).reshape(1,1,32)
+        divider = self.piece_grids.sum((0, 1)).reshape(1, 1, 32)
         divider[divider < 0.001] = 1
         print(self.piece_types[12])
-        print(self.piece_grids.sum((0,1)).reshape(1,1,32))
+        print(self.piece_grids.sum((0, 1)).reshape(1, 1, 32))
         self.piece_grids /= divider
 
     def gen_certain_board(self):
@@ -308,7 +310,7 @@ class PiecewiseGrid:
 
         for i in order:
             # transposing from numpy format to board format begins here
-            piece_grid = np.copy(self.piece_grids[:,:,i]).flatten()
+            piece_grid = np.copy(self.piece_grids[:, :, i]).flatten()
 
             if np.sum(piece_grid) < 0.001:
                 continue
@@ -328,6 +330,7 @@ class PiecewiseGrid:
             spaces.append(num)
 
         return board
+
 
 # This class hasn't been fleshed out yet. Its purpose will be to have the PiecewiseGrid interface with the reconchess game
 def PiecewisePlayer(Player):
@@ -427,10 +430,12 @@ def PiecewisePlayer(Player):
         # TODO: implement this method
         pass
 
-#b = chess.Board()
-#print(b)
-#b.set_piece_map({})
-#print(b)
+
+# b = chess.Board()
+# print(b)
+# b.set_piece_map({})
+# print(b)
+"""
 g = PiecewiseGrid()
 #print(g.gen_board())
 #print(g.gen_certain_board())
@@ -457,3 +462,4 @@ print(g.piece_grids[:, :, 0])
 print(g.piece_grids[:, :, 1])
 
 # construct sense
+"""

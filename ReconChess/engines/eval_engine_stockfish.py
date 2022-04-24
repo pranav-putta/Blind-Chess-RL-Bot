@@ -1,4 +1,4 @@
-import base
+import ReconChess.engines.base as base
 import chess
 import chess.engine
 import numpy as np

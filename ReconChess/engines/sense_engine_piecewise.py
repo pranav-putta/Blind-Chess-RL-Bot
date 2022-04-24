@@ -4,7 +4,7 @@ import numpy as np
 from typing import List
 
 
-class RandomSenseEngine(base.SenseEngine):
+class PiecewiseSenseEngine(base.SenseEngine):
     def evaluate_sense(self, boards: List[chess.Board]) -> np.ndarray:
         """
         Returns a uniform distribution to sense

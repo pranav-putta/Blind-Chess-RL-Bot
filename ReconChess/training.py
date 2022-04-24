@@ -1,4 +1,6 @@
-from engines import StockFishNNEvalEngine, VanillaISMCTSPolicyEngine, RandomSenseEngine
+import chess
+
+from engines import StockFishNNEvalEngine, RandomSenseEngine
 
 
 def self_play_games(n=10):

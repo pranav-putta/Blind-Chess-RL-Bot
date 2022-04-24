@@ -1,12 +1,15 @@
-import base
+import chess
+
+import ReconChess.engines.base as base
 import numpy as np
 from typing import List, Tuple
+from ReconChess.prob_board import PiecewiseGrid
 
 
 class Node:
     idx: int
-    self_bitboard: np.ndarray
-    opponent_bitboard: np.ndarray
+    belief: PiecewiseGrid
+    truth: chess.Board
 
 
 class ISMCTSPolicyEngine(base.PolicyEngine):
@@ -16,6 +19,7 @@ class ISMCTSPolicyEngine(base.PolicyEngine):
         self.N = np.zeros(initial_shape)
         self.P = np.zeros(initial_shape)
         self.visited: List[Node] = []
+
 
     def generate_policy(self, state) -> np.ndarray:
         return self.mcts(state)
