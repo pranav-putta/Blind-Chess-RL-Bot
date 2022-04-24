@@ -8,7 +8,7 @@ STOCKFISH_PATH = '/usr/local/Cellar/stockfish/14.1/bin/stockfish'
 EVAL_TIME_LIMIT = 0.1
 
 
-class StockFishEvaluationEngine(base.EvaluationEngine):
+class StockFishEvaluationEngine(base.SimulationEngine):
     engine: chess.engine.SimpleEngine
 
     def __init__(self):
@@ -17,7 +17,7 @@ class StockFishEvaluationEngine(base.EvaluationEngine):
     def restart_engine(self):
         self.engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH, setpgrp=True)
 
-    def evaluate_boards(self, boards: List[chess.Board]) -> np.ndarray:
+    def score_boards(self, boards: List[chess.Board]) -> np.ndarray:
         arr = []
         for board in boards:
             score = 0

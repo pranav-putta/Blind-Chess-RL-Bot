@@ -148,11 +148,11 @@ def evaluate(boards: List[chess.Board], model=None):
     return model(*tensors)
 
 
-class StockFishNNEvalEngine(base.EvaluationEngine):
+class StockFishNNEvalEngine(base.SimulationEngine):
     def __init__(self):
         self.model = torch.load('chess.pt')
 
-    def evaluate_boards(self, boards: List[chess.Board]):
+    def score_boards(self, boards: List[chess.Board]):
         batch = SparseBatch(boards)
         tensors = batch.get_tensors()
         return self.model(*tensors)
