@@ -11,7 +11,7 @@ class PiecewiseInformationSet(base.InformationSet):
         constructs new information set from a board state
         :param board:
         """
-        pass
+        super().__init__(board)
 
     @property
     def raw(self) -> Any:
