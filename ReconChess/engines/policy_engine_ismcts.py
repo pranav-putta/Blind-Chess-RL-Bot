@@ -2,7 +2,7 @@ import chess
 
 import ReconChess.engines.base as base
 import numpy as np
-from typing import List, Tuple, Any
+from typing import List, Tuple, Any, Generic, Type
 
 
 class Node:
@@ -12,21 +12,18 @@ class Node:
     determinization: chess.Board
     value: float
     parent: Any
+    player: int
 
-    def __init__(self, truth, parent, info_set=None, determinization=None):
+    def __init__(self, truth, parent, info_set: base.InformationSet, determinization=None):
         self.truth = truth
-        if info_set is None:
-            # if no belief is provided, creates new information set
-            self.belief = base.InformationSet(truth)
-        else:
-            self.belief = info_set
+        self.info_set = info_set
         self.children = []
         self.determinization = determinization
         self.parent = parent
 
     def find_or_create_child(self, node) -> Any:
         # TODO: implement find_or_create_child
-        pass
+        return self
 
     def update_move(self, move: chess.Move):
         result = self.truth.handle_move(move)
@@ -50,10 +47,12 @@ class Node:
 class ISMCTSPolicyEngine(base.PolicyEngine):
     def __init__(self, sense_engine: base.SenseEngine,
                  eval_engine: base.SimulationEngine,
+                 info_set_type: Type[base.InformationSet],
                  num_iterations: int,
                  reset_info_set_on_determinization=True):
         super().__init__(sense_engine, eval_engine)
         initial_shape = (100, 64 * (7 * 8 + 8 + 9))
+        self.info_set_type = info_set_type
         self.Q = np.zeros(initial_shape)
         self.N = np.zeros(initial_shape)
         self.P = np.zeros(initial_shape)
@@ -63,7 +62,7 @@ class ISMCTSPolicyEngine(base.PolicyEngine):
         self.num_iters = num_iterations
         self.reset_info_set_on_determinization = reset_info_set_on_determinization
 
-    def generate_policy(self, info_set: base.InformationSet, game: chess.Board) -> np.ndarray:
+    def generate_policy(self, info_set: base.InformationSet, game: base.Game) -> np.ndarray:
         # TODO: fix monte carlo call
         return self.mcts(info_set, info_set, game)
 
@@ -79,7 +78,8 @@ class ISMCTSPolicyEngine(base.PolicyEngine):
         """
         determinization = state.info_set.random_sample()
         if self.reset_info_set_on_determinization:
-            return Node(state.truth, state, determinization=determinization)
+            return Node(state.truth, state, determinization=determinization,
+                        info_set=self.info_set_type(base.Game.empty()))
         else:
             return Node(state.truth, state, determinization=determinization, info_set=state.info_set)
 
@@ -93,11 +93,10 @@ class ISMCTSPolicyEngine(base.PolicyEngine):
 
         for i in range(self.num_iters):
             # perform initial determinization
-            trees = self.select([p1_tree, p2_tree], [p1_info_set, p2_info_set], player)
+            trees = self.select([p1_tree, p2_tree], player)
             if not trees[player].terminal:
                 self.expand(trees)
             self.simulate(trees)
-        pass
 
     def has_visited(self, node):
         # TODO: fix this
@@ -126,7 +125,7 @@ class ISMCTSPolicyEngine(base.PolicyEngine):
                 continue
             tree.value += reward
             trees[i] = tree.parent
-            
+
     def simulate(self, trees: List[Node]):
         boards = []
         for tree in trees:
@@ -145,12 +144,12 @@ class ISMCTSPolicyEngine(base.PolicyEngine):
                 tmp.update_move(move)
                 node.find_or_create_child(node)
 
-    def select(self, trees: List[Node], info_sets: List[base.InformationSet], player: int):
+    def select(self, trees: List[Node], player: int):
         p_tree: Node = trees[player]
         # perform sense
-        sq = self.sense_engine.choose_sense(info_sets[player])
+        sq = self.sense_engine.choose_sense(p_tree.info_set)  # get the sense
         result = p_tree.truth.handle_sense(sq)
-        info_sets[player].update_with_sense(result)
+        p_tree.info_set.update_with_sense(result)
 
         # perform determinization
         tmp = self.determinization(p_tree)
@@ -166,7 +165,12 @@ class ISMCTSPolicyEngine(base.PolicyEngine):
             # propagate opponent move
             p_tree.info_set.propagate_opponent_move()
 
-            # determinize again
+            # perform sense
+            sq = self.sense_engine.choose_sense(p_tree.info_set)  # get the sense
+            result = p_tree.truth.handle_sense(sq)
+            p_tree.info_set.update_with_sense(result)
+
+            # perform determinization
             tmp = self.determinization(p_tree)
             p_tree = p_tree.find_or_create_child(tmp)
         return trees

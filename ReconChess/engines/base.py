@@ -4,9 +4,13 @@ from abc import ABC, abstractmethod
 from typing import List, Tuple, Any
 
 
-class Game(ABC):
+class Game:
     def __init__(self, board: chess.Board):
         self.board = board
+
+    @staticmethod
+    def empty():
+        return Game(chess.Board())
 
     def handle_sense(self, square):
         if square not in list(chess.SQUARES):
@@ -49,14 +53,13 @@ class SimulationEngine(ABC):
 
 class InformationSet(ABC):
 
-    def __init__(self, board: chess.Board):
+    def __init__(self, board: Game):
         """
         constructs new information set from a board state
         :param board:
         """
         pass
 
-    @abstractmethod
     @property
     def raw(self) -> Any:
         """
