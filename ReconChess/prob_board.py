@@ -10,12 +10,19 @@ from scipy import signal
 order = [4, 20, 3, 19, 7, 23, 0, 16, 6, 22, 1, 17, 5, 21, 2, 18, 8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30,
          15, 31]
 
+import copy
 
 class PiecewiseGrid:
-    # assumes board is in the standard opening position
-    def __init__(self):
-        self.piece_grids = np.zeros((8, 8, 32))
+    def __copy__(self):
+        newgrid = PiecewiseGrid()
+        newgrid.piece_grids = np.copy(self.piece_grids)
+        newgrid.piece_types = copy.deepcopy(self.piece_types)
+        newgrid.own_pieces = copy.deepcopy(self.own_pieces)
+        newgrid.captured = copy.deepcopy(self.captured)
+        newgrid.promoted = copy.deepcopy(self.promoted)
 
+    def __init__(self, board: chess.Board):
+        self.piece_grids = np.zeros((8, 8, 32))
         self.piece_types = ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'] + ['p'] * 8
         self.piece_types = self.piece_types + [x.upper() for x in self.piece_types]
 
@@ -23,11 +30,24 @@ class PiecewiseGrid:
         self.captured = [False] * 32
         self.promoted = [False] * 32
 
-        # The board is transposed in numpy compard to the chess library representation
+        for i in range(32):
+            piece = chess.Piece.from_symbol(self.piece_types[i])
+            if piece != None:
+                pieces = list(board.pieces(piece.piece_type, piece.color))
+                file = chess.square_file(pieces[0])
+                rank = chess.square_rank(pieces[0])
+                self.piece_grids[rank, file, i] = 1.0
+                board.set_piece_at(pieces[0], None)
+            else:
+                self.captured[i] = True
+
+        # generates standard board programmatically
+        """
         for p in range(2):
             for y in range(2):
                 for x in range(8):
                     self.piece_grids[p * y + (1 - p) * (7 - y), x, 16 * p + 8 * y + x] = 1.0
+        """
 
         # rook
         self.piece_grids[:, :, 0] = np.zeros((8, 8))
@@ -195,9 +215,45 @@ class PiecewiseGrid:
         :return: chess.SQUARE -- the center of 3x3 section of the board you want to sense
         :example: choice = chess.A1
         """
-        # TODO: flesh out this method with more edge cases described in paper
+        KING_ATTACK = 0.25
+        PIECE_PIN = 0.15
 
         self.uncertainty = 0.5 - np.abs(0.5 - self.piece_grids)
+        self.uncertainty = np.zeros((8, 8, 32))
+
+        board = self.gen_certain_board()
+
+        # find location of your own king
+        rank, file = np.unravel_index(np.argmax(self.piece_grids[:, :, 4]), (8, 8))
+
+        # add uncertainty from knight attacks
+        knights = [self.piece_types[i] == 'n' and not self.captured[i] for i in range(32)]
+        knight_directions = [(2, 1), (1, 2), (-1, 2), (-2, 1), (1, -2), (2, -1), (-2, -1), (-1, -2)]
+        for dir in knight_directions:
+            x = file + dir[0]
+            y = rank + dir[1]
+            if x < 8 and y < 8 and x >= 0 and y >= 0 and board.piece_at(chess.square(x, y) == None):
+                self.uncertainty[x, y, knights] += KING_ATTACK
+
+        # add uncertainty from sliding attacks
+        straight_attackers = [(self.piece_types[i] == 'q' or self.piece_types[i] == 'r') and not self.captured[i] for i in range(32)]
+        diagonal_attackers = [(self.piece_types[i] == 'q' or self.piece_types[i] == 'b') and not self.captured[i] for i in range(32)]
+        directions = [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]
+        for i, dir in enumerate(directions):
+            x = file + dir[0]
+            y = rank + dir[1]
+            num_hits = 0
+
+            while x < 8 and x >= 0 and y < 8 and y >= 0 and num_hits < 2:
+                piece = board.piece_at(chess.square(x, y))
+                if piece != None:
+                    num_hits += 1 if piece.color == chess.WHITE else 2
+                else:
+                    self.uncertainty[y, x, straight_attackers if i < 4 else diagonal_attackers] += KING_ATTACK if num_hits == 0 else PIECE_PIN
+                x += dir[0]
+                y += dir[1]
+
+        #return self.uncertainty
         self.uncertainty = np.max(self.uncertainty, axis=2)
 
         # finds which 3x3 squares have the highest uncertainties
@@ -431,12 +487,12 @@ def PiecewisePlayer(Player):
         pass
 
 
-# b = chess.Board()
+b = chess.Board()
 # print(b)
 # b.set_piece_map({})
 # print(b)
-"""
-g = PiecewiseGrid()
+
+g = PiecewiseGrid(b)
 #print(g.gen_board())
 #print(g.gen_certain_board())
 g.gen_board()
@@ -449,6 +505,7 @@ square = g.choose_sense()
 
 file = chess.square_file(square)
 rank = chess.square_rank(square)
+print("SENSE SQUARE: " + str(file) + ", " + str(rank))
 
 sense_result = []
 for x in range(file - 1, file + 2):
@@ -462,4 +519,3 @@ print(g.piece_grids[:, :, 0])
 print(g.piece_grids[:, :, 1])
 
 # construct sense
-"""
