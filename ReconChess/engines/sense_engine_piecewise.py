@@ -1,15 +1,14 @@
 import ReconChess.engines.base as base
 import chess
-import numpy as np
-from typing import List
+from abc import abstractmethod
 
 
 class PiecewiseSenseEngine(base.SenseEngine):
-    def evaluate_sense(self, boards: List[chess.Board]) -> np.ndarray:
+    @abstractmethod
+    def choose_sense(self, board: base.InformationSet) -> chess.Square:
         """
-        Returns a uniform distribution to sense
-        :param boards:
-        :return:
+        evaluates all sensing options given a board
+        :param board: information set
+        :return: returns the chosen square
         """
-        dist = np.ones(36) / 36
-        return np.tile(dist, len(boards))
+        return 0

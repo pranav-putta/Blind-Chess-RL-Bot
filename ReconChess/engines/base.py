@@ -85,7 +85,8 @@ class InformationSet(ABC):
         pass
 
     @abstractmethod
-    def propagate_opponent_move(self):
+    def propagate_opponent_move(self, possible_moves: List[chess.Move], captured_square: bool,
+                                captured_piece: chess.Piece):
         pass
 
     def __copy__(self):

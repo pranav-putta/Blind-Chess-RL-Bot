@@ -3,7 +3,7 @@ import chess
 from typing import List, Tuple, Any
 import ReconChess.engines.base as base
 
-from prob_board import PiecewiseGrid
+from ReconChess.prob_board import PiecewiseGrid
 
 import numpy as np
 
@@ -15,7 +15,7 @@ class PiecewiseInformationSet(base.InformationSet):
         :param board:
         """
         super().__init__(board)
-        self.piecewisegrid = PiecewiseGrid(board)
+        self.piecewisegrid = PiecewiseGrid(board.board)
 
     @property
     def raw(self) -> Any:

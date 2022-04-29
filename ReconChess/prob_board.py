@@ -1,7 +1,6 @@
 import chess
 import numpy as np
 
-from player import Player
 import random
 
 # to convolve uncertainties
