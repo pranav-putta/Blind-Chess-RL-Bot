@@ -1,6 +1,6 @@
 import chess
 
-import ReconChess.engines.base as base
+import engines.base as base
 import numpy as np
 from typing import List, Tuple, Any, Generic, Type
 

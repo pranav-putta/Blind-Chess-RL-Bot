@@ -46,10 +46,6 @@ class SimulationEngine(ABC):
         """
         pass
 
-    @abstractmethod
-    def evaluate_rewards(self, boards: List[chess.Board]) -> np.ndarray:
-        pass
-
 
 class InformationSet(ABC):
 

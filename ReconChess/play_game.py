@@ -62,6 +62,7 @@ def play_local_game(white_player, black_player, player_names, verbose=True):
         output_true.write("##################################--Current Board State\n")
         format_write_board(output_true, game.truth_board)
 
+        print("ABOUT TO PLAY TURN")
         requested_move, taken_move = play_turn(game, players[game.turn], game.turn, move_number, output, output_true,
                                                verbose=verbose)
         if verbose:

@@ -1,8 +1,8 @@
-white: 'naive_stockfish_nn_agent'
+white: 'random_agent.py'
 white_args: [ ]
 
-black: 'random_agent'
+black: 'random_agent.py'
 black_args: []
 
-verbose: False
+verbose: True
 num_games: 5

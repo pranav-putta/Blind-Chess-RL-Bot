@@ -21,6 +21,7 @@ for i in range(ENV.num_games):
 
     players = [player_one, player_two]
     player_names = [name_one, name_two]
+    print(player_names)
 
     if name_one == "Human":
         color = input("Play as (0)Random (1)White (2)Black: ")
