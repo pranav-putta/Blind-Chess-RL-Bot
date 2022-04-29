@@ -1,21 +1,23 @@
 from abc import ABC, abstractmethod
 import chess
 from typing import List, Tuple, Any
-import ReconChess.engines.base as base
+import engines.base as base
 
-from ReconChess.prob_board import PiecewiseGrid
+from prob_board import PiecewiseGrid
+from game import Game
 
 import numpy as np
 
+
 class PiecewiseInformationSet(base.InformationSet):
 
-    def __init__(self, board: base.Game):
+    def __init__(self, board: Game):
         """
         constructs new information set from a board state
         :param board:
         """
         super().__init__(board)
-        self.piecewisegrid = PiecewiseGrid(board.board)
+        self.piecewisegrid = PiecewiseGrid(board.truth_board)
 
     @property
     def raw(self) -> Any:
@@ -25,24 +27,30 @@ class PiecewiseInformationSet(base.InformationSet):
         """
         return self.piecewisegrid.piece_grids
 
-    def random_sample(self) -> chess.Board:
+    def random_sample(self) -> Game:
         """
         randomly generates a sample board state
         :return:
         """
-        return self.piecewisegrid.gen_board()
+        board = self.piecewisegrid.gen_board()
+        g = Game()
+        g.truth_board = board
+        g.white_board = board
+        g.black_board = board
+        return g
 
     def update_with_sense(self, sense_result: List[Tuple[chess.Square, chess.Piece]]):
         self.piecewisegrid.handle_sense_result(sense_result)
 
     def update_with_move(self, move_result):
-        pass # not implemented yet
+        pass  # not implemented yet
 
-    def propagate_opponent_move(self, possible_moves: List[chess.Move], captured_square: bool, captured_piece: chess.Piece):
+    def propagate_opponent_move(self, possible_moves: List[chess.Move], captured_square: bool,
+                                captured_piece: chess.Piece):
         self.piecewisegrid.handle_enemy_move(possible_moves, captured_square, captured_piece)
 
     def __copy__(self):
-        new_grid = np.copy(self.piecewisegrid)
-        new_infoset = PiecewiseInformationSet(chess.Board())
-        new_infoset.piecewisegrid = new_grid
+        new_grid = np.copy(self.piecewisegrid.piece_grids)
+        new_infoset = PiecewiseInformationSet(Game())
+        new_infoset.piecewisegrid.piece_grids = new_grid
         return new_infoset

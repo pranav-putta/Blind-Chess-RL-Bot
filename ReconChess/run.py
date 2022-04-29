@@ -1,8 +1,7 @@
-import util
-import config_loader
+from util import Configuration
 from play_game import *
-config_loader.load_config()
-from util import ENV
+
+ENV = Configuration('human_agent.py', [], 'random_agent.py', [], True, 1)
 
 wins = 0
 

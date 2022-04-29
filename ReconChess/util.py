@@ -2,7 +2,6 @@ import chess
 from collections import namedtuple
 
 Configuration = namedtuple('Config', 'white, white_args, black, black_args, verbose, num_games')
-ENV = Configuration('human_agent.py', [], 'random_agent.py', [], True, 1)
 
 
 def format_print_board(board, force_verbose=False):

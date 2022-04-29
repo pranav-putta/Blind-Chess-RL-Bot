@@ -1,4 +1,4 @@
-import ReconChess.engines.base as base
+import engines.base as base
 import chess
 import numpy as np
 import torch

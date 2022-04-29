@@ -11,9 +11,10 @@ order = [4, 20, 3, 19, 7, 23, 0, 16, 6, 22, 1, 17, 5, 21, 2, 18, 8, 24, 9, 25, 1
 
 import copy
 
+
 class PiecewiseGrid:
     def __copy__(self):
-        newgrid = PiecewiseGrid()
+        newgrid = PiecewiseGrid(chess.Board())
         newgrid.piece_grids = np.copy(self.piece_grids)
         newgrid.piece_types = copy.deepcopy(self.piece_types)
         newgrid.own_pieces = copy.deepcopy(self.own_pieces)
@@ -29,6 +30,7 @@ class PiecewiseGrid:
         self.own_pieces = [False] * 16 + [True] * 16
         self.captured = [False] * 32
         self.promoted = [False] * 32
+        self.enemy_moves = []
 
         for i in range(32):
             piece = chess.Piece.from_symbol(self.piece_types[i])
@@ -47,7 +49,6 @@ class PiecewiseGrid:
             for y in range(2):
                 for x in range(8):
                     self.piece_grids[p * y + (1 - p) * (7 - y), x, 16 * p + 8 * y + x] = 1.0
-        """
 
         # rook
         self.piece_grids[:, :, 0] = np.zeros((8, 8))
@@ -72,6 +73,7 @@ class PiecewiseGrid:
         # pawn
         self.piece_grids[:, :, 11] = np.zeros((8, 8))
         self.piece_grids[4, 3, 11] = 1.0
+        """
 
     # possible moves represents a probability distribution. it is stored as a list of tuples of the form (move, piece_type, chance)
     # move chances are stored as numpy array
@@ -236,8 +238,10 @@ class PiecewiseGrid:
                 self.uncertainty[x, y, knights] += KING_ATTACK
 
         # add uncertainty from sliding attacks
-        straight_attackers = [(self.piece_types[i] == 'q' or self.piece_types[i] == 'r') and not self.captured[i] for i in range(32)]
-        diagonal_attackers = [(self.piece_types[i] == 'q' or self.piece_types[i] == 'b') and not self.captured[i] for i in range(32)]
+        straight_attackers = [(self.piece_types[i] == 'q' or self.piece_types[i] == 'r') and not self.captured[i] for i
+                              in range(32)]
+        diagonal_attackers = [(self.piece_types[i] == 'q' or self.piece_types[i] == 'b') and not self.captured[i] for i
+                              in range(32)]
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]
         for i, dir in enumerate(directions):
             x = file + dir[0]
@@ -249,11 +253,12 @@ class PiecewiseGrid:
                 if piece != None:
                     num_hits += 1 if piece.color == chess.WHITE else 2
                 else:
-                    self.uncertainty[y, x, straight_attackers if i < 4 else diagonal_attackers] += KING_ATTACK if num_hits == 0 else PIECE_PIN
+                    self.uncertainty[
+                        y, x, straight_attackers if i < 4 else diagonal_attackers] += KING_ATTACK if num_hits == 0 else PIECE_PIN
                 x += dir[0]
                 y += dir[1]
 
-        #return self.uncertainty
+        # return self.uncertainty
         self.uncertainty = np.max(self.uncertainty, axis=2)
 
         # finds which 3x3 squares have the highest uncertainties
@@ -481,14 +486,15 @@ def PiecewisePlayer(Player):
         pass
 
 
+"""
 b = chess.Board()
 # print(b)
 # b.set_piece_map({})
 # print(b)
 
 g = PiecewiseGrid(b)
-#print(g.gen_board())
-#print(g.gen_certain_board())
+# print(g.gen_board())
+# print(g.gen_certain_board())
 g.gen_board()
 g.handle_enemy_move([], True, chess.square(6, 4))
 print("HANDLING MOVE")
@@ -513,3 +519,4 @@ print(g.piece_grids[:, :, 0])
 print(g.piece_grids[:, :, 1])
 
 # construct sense
+"""

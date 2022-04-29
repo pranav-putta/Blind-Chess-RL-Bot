@@ -70,7 +70,7 @@ class Game:
         """
         b = board.copy()
         for piece_type in chess.PIECE_TYPES:
-            for sq in b.piece_types(piece_type, not turn):
+            for sq in b.pieces(piece_type, not turn):
                 b.remove_piece_at(sq)
         return b
 
@@ -96,7 +96,7 @@ class Game:
 
         no_opponents_board = self._without_opponent_pieces(board, turn)
 
-        for pawn_square in board.piece_types(chess.PAWN, turn):
+        for pawn_square in board.pieces(chess.PAWN, turn):
             for attacked_square in board.attacks(pawn_square):
                 # skip this square if one of our own pieces are on the square
                 if no_opponents_board.piece_at(attacked_square):

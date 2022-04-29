@@ -3,46 +3,19 @@ import numpy as np
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Any
 from enum import Enum
+from game import Game
 
 
 class Player(Enum):
     Self = 0
     Opponent = 1
 
-
-class Game:
-    def __init__(self, board: chess.Board):
-        self.board = board
-
     @staticmethod
-    def empty():
-        return Game(chess.Board())
-
-    def handle_sense(self, square):
-        if square not in list(chess.SQUARES):
-            return []
-
-        rank, file = chess.square_rank(square), chess.square_file(square)
-        sense_result = []
-        for delta_rank in [1, 0, -1]:
-            for delta_file in [-1, 0, 1]:
-                if 0 <= rank + delta_rank <= 7 and 0 <= file + delta_file <= 7:
-                    sense_square = chess.square(file + delta_file, rank + delta_rank)
-                    sense_result.append((sense_square, self.board.piece_at(sense_square)))
-
-        return sense_result
-
-    def handle_move(self, move: chess.Move):
-        self.board.push(move)
-        # TODO: fix this
-        return None
-
-    def __copy__(self):
-        board = self.board.copy()
-        return Game(board)
-
-    def __repr__(self):
-        return self.board.__repr__()
+    def switch(player):
+        if player == Player.Self:
+            return Player.Opponent
+        else:
+            return Player.Self
 
 
 class SimulationEngine(ABC):
@@ -78,7 +51,7 @@ class InformationSet(ABC):
         pass
 
     @abstractmethod
-    def random_sample(self) -> chess.Board:
+    def random_sample(self) -> Game:
         """
         randomly generates a sample board state
         :return:
