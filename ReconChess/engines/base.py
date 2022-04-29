@@ -2,6 +2,12 @@ import chess
 import numpy as np
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Any
+from enum import Enum
+
+
+class Player(Enum):
+    Self = 0
+    Opponent = 1
 
 
 class Game:
@@ -34,6 +40,9 @@ class Game:
     def __copy__(self):
         board = self.board.copy()
         return Game(board)
+
+    def __repr__(self):
+        return self.board.__repr__()
 
 
 class SimulationEngine(ABC):
@@ -114,7 +123,7 @@ class PolicyEngine(ABC):
         self.eval_engine = eval_engine
 
     @abstractmethod
-    def generate_policy(self, info_set: InformationSet, truth: Game) -> np.ndarray:
+    def generate_policy(self, self_info_set: InformationSet, other_info_set: InformationSet) -> np.ndarray:
         """
         generates a policy for a given state
         :return:

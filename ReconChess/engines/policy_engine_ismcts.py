@@ -3,6 +3,16 @@ import chess
 import ReconChess.engines.base as base
 import numpy as np
 from typing import List, Tuple, Any, Generic, Type
+from enum import Enum
+
+
+
+
+class BasicNode:
+    info_set: base.InformationSet
+    children: List
+    parent: Any
+    player: int
 
 
 class Node:
@@ -62,9 +72,9 @@ class ISMCTSPolicyEngine(base.PolicyEngine):
         self.num_iters = num_iterations
         self.reset_info_set_on_determinization = reset_info_set_on_determinization
 
-    def generate_policy(self, info_set: base.InformationSet, game: base.Game) -> np.ndarray:
+    def generate_policy(self, player_info_set: base.InformationSet, other_info_set: base.InformationSet) -> np.ndarray:
         # TODO: fix monte carlo call
-        return self.mcts(info_set, info_set, game)
+        return self.mcts(player_info_set, other_info_set, None)
 
     def ucb(self, move):
         return 0

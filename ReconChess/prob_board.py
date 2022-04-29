@@ -20,7 +20,8 @@ class PiecewiseGrid:
         newgrid.captured = copy.deepcopy(self.captured)
         newgrid.promoted = copy.deepcopy(self.promoted)
 
-    def __init__(self, board: chess.Board):
+    def __init__(self, board1: chess.Board):
+        board = board1.copy()
         self.piece_grids = np.zeros((8, 8, 32))
         self.piece_types = ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'] + ['p'] * 8
         self.piece_types = self.piece_types + [x.upper() for x in self.piece_types]
@@ -343,8 +344,7 @@ class PiecewiseGrid:
             # todo: pawns need more logic to handle duplicates
         divider = self.piece_grids.sum((0, 1)).reshape(1, 1, 32)
         divider[divider < 0.001] = 1
-        print(self.piece_types[12])
-        print(self.piece_grids.sum((0, 1)).reshape(1, 1, 32))
+
         self.piece_grids /= divider
 
     def gen_certain_board(self):
@@ -376,11 +376,6 @@ class PiecewiseGrid:
             num = np.random.choice(64, 1, p=piece_grid)[0]
             # and ends here when flattened index is reinterpreted as board index
             board.set_piece_at(num, chess.Piece.from_symbol(self.piece_types[i]))
-
-            if i == 0 or i == 1 or i == 11:
-                print(self.piece_types[i])
-                print(self.piece_grids[:, :, i])
-                print("SUM: " + str(np.sum(self.piece_grids[:, :, i])))
 
             spaces.append(num)
 
