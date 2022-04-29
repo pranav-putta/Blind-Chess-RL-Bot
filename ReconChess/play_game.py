@@ -110,11 +110,14 @@ def play_turn(game, player, turn, move_number, output, output_true, verbose=True
     # play move action
     move = player.choose_move(possible_moves, game.get_seconds_left())
     end = time.time()
-    if end - start > 60:
+    if end - start > 6000: # TODO: this is only for testing, change this back later
         game.took_to_long_to_move = True
         print('Took too long to move')
     requested_move, taken_move, captured_square, reason = game.handle_move(move)
     game.took_to_long_to_move = False
+    print("MOVES")
+    print(requested_move)
+    print(taken_move)
     player.handle_move_result(requested_move, taken_move, reason, captured_square is not None,
                               captured_square)
 

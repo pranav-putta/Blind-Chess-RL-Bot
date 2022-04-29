@@ -28,6 +28,9 @@ class LaSalleAgent(Player):
         self.color = color
         self.piecewisegrid = PiecewiseGrid(board)
 
+
+        self.firstmove = True if color == chess.WHITE else False
+
     def handle_opponent_move_result(self, captured_piece, captured_square):
         """
         This function is called at the start of your turn and gives you the chance to update your board.
@@ -35,14 +38,29 @@ class LaSalleAgent(Player):
         :param captured_piece: bool - true if your opponents captured your piece with their last move
         :param captured_square: chess.Square - position where your piece was captured
         """
+        if self.firstmove:
+            self.firstmove = False
+            return
+
         num_samples = 50
         samples = []
         for sample in range(num_samples):
-            board = self.piecewisegrid.gen_board()
+            board = self.piecewisegrid.gen_board().mirror()
             board.color = chess.BLACK
             samples.append(board)
 
         moves = self.engine.best_moves(samples)
+        # mirrors move to opponent's side
+        for i in range(num_samples):
+            move = moves[i]
+            move.from_square = chess.square(chess.square_file(move.from_square), 7 - chess.square_rank(move.from_square))
+            move.to_square = chess.square(chess.square_file(move.to_square), 7 - chess.square_rank(move.to_square))
+            samples[i] = samples[i].mirror()
+
+        print("OPPONENT MOVES: ")
+        print(moves)
+        print(self.piecewisegrid.gen_board())
+        print(self.piecewisegrid.gen_certain_board())
         chances = [1.0 / len(moves) for move in moves]
         piece_types = [board.piece_at(move.from_square).piece_type for board, move in zip(samples, moves)]
 
@@ -99,7 +117,6 @@ class LaSalleAgent(Player):
         print("SAMPLES")
         for sample in range(num_samples):
             board = self.piecewisegrid.gen_board()
-            print(board)
             board.color = chess.WHITE
             samples.append(board)
 

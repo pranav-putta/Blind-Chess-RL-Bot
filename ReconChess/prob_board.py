@@ -30,6 +30,7 @@ class PiecewiseGrid:
         self.own_pieces = [False] * 16 + [True] * 16
         self.captured_list = [None] * 32
         self.promoted = [False] * 32
+        self.enemy_moves = []
 
         for i in range(32):
             piece = chess.Piece.from_symbol(self.piece_types[i])
@@ -250,7 +251,6 @@ class PiecewiseGrid:
         ]
         """
 
-        print(self.enemy_moves)
         if len(self.enemy_moves) > 0:
             probs = self.piece_grids_temp.sum(axis=2)
             maxes = self.piece_grids_temp.max(axis=2)
@@ -271,6 +271,7 @@ class PiecewiseGrid:
                     piece_index = np.argmax(self.piece_grids[rank, file, :])
                     piece_type = self.piece_types[piece_index]
 
+                    # TODO: Fix this bullshit
                     if loc[1] == None:  # if it's no longer there, it must have moved
                         self.enemy_moves = [x for x in self.enemy_moves if x[1] == piece_type]
                     elif loc[1].symbol() == piece_type:  # if it's still there, it can't have moved
@@ -291,6 +292,7 @@ class PiecewiseGrid:
         self.update_prob_board_from_moves(self.enemy_moves)
 
         # update piece grid based on sense results
+        # TODO: THIS PLACE IS A BUGGY MESS
         handled = [False] * 32
         for loc in sense_result:
             file = chess.square_file(loc[0])
@@ -308,11 +310,13 @@ class PiecewiseGrid:
             # todo: pawns need more logic to handle duplicates
         divider = self.piece_grids.sum((0, 1)).reshape(1, 1, 32)
         divider[divider < 0.001] = 1
-        print(self.piece_types[12])
-        print(self.piece_grids.sum((0, 1)).reshape(1, 1, 32))
         self.piece_grids /= divider
 
     def handle_player_move(self, completed_move: chess.Move, captured_piece: bool):
+        # player passed and there is nothing to handle
+        if completed_move == None:
+            return
+
         from_file = chess.square_file(completed_move.from_square)
         from_rank = chess.square_rank(completed_move.from_square)
         to_file = chess.square_file(completed_move.to_square)
@@ -372,32 +376,4 @@ class PiecewiseGrid:
         piece_grids_copy = self.piece_grids.copy()
         piece_grids_copy[piece_grids_copy == 0] = 1.0 # entropy is zero when probability is zero or one, but log breaks with zero
 
-        return - int(np.sum(piece_grids_copy * np.log(piece_grids_copy)))
-
-if __name__ == "__main__":
-    b = chess.Board()
-
-    b.set_piece_at(chess.square(1, 0), None)
-    b.set_piece_at(chess.square(1, 7), None)
-
-    b.set_piece_at(chess.square(1, 1), None)
-    b.set_piece_at(chess.square(1, 3), chess.Piece.from_symbol("P"))
-
-    b.set_piece_at(chess.square(3, 6), None)
-    b.set_piece_at(chess.square(3, 5), chess.Piece.from_symbol("p"))
-
-    b.set_piece_at(chess.square(6, 6), None)
-    b.set_piece_at(chess.square(6, 5), chess.Piece.from_symbol("p"))
-
-    b.set_piece_at(chess.square(4, 0), None)
-    b.set_piece_at(chess.square(4, 3), chess.Piece.from_symbol("K"))
-    print(b)
-    # b.set_piece_map({})
-    # print(b)
-
-    g = PiecewiseGrid(b)
-    print(g.captured_list)
-    #print(g.gen_board())
-    #print(g.gen_certain_board())
-    g.handle_player_move(chess.Move(chess.square(3, 0), chess.square(6, 2)), False)
-    print(g.gen_board())
+        return int(2 ** (-np.sum(piece_grids_copy * np.log(piece_grids_copy))))
