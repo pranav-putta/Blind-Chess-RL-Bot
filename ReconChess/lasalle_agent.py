@@ -57,23 +57,26 @@ class LaSalleAgent(Player):
         # mirrors move to opponent's side
         for i in range(num_samples):
             move = moves[i]
-            move.from_square = chess.square(chess.square_file(move.from_square), 7 - chess.square_rank(move.from_square))
-            move.to_square = chess.square(chess.square_file(move.to_square), 7 - chess.square_rank(move.to_square))
+            move.from_square = chess.square(7 - chess.square_file(move.from_square), 7 - chess.square_rank(move.from_square))
+            move.to_square = chess.square(7 - chess.square_file(move.to_square), 7 - chess.square_rank(move.to_square))
             samples[i] = samples[i].mirror()
         chances = [stockfish_vs_random / len(moves) for move in moves]
-        piece_types = [board.piece_at(move.from_square).piece_type for board, move in zip(samples, moves)]
+        piece_types = []
+        for board, move in zip(samples, moves):
+            piece_types.append(board.piece_at(move.from_square).piece_type)
+        #piece_types = [board.piece_at(move.from_square).piece_type for board, move in zip(samples, moves)]
 
-        random_moves = []
-        for board in samples:
-            for i in range(5):
-                random_moves.append(random.choice(list(board.pseudo_legal_moves)))
+        #random_moves = []
+        #for board in samples:
+            #for i in range(5):
+                #random_moves.append(random.choice(list(board.pseudo_legal_moves)))
 
-        random_chances = [(1 - stockfish_vs_random) / len(random_moves) for move in random_moves]
-        random_piece_types = [board.piece_at(move.from_square).piece_type for board, move in zip(samples, random_moves)]
+        #random_chances = [(1 - stockfish_vs_random) / len(random_moves) for move in random_moves]
+        #random_piece_types = [board.piece_at(move.from_square).piece_type for board, move in zip(samples, random_moves)]
 
-        moves += random_moves
-        chances += random_chances
-        piece_types += random_piece_types
+        #moves += random_moves
+        #chances += random_chances
+        #piece_types += random_piece_types
 
         print("OPPONENT MOVES: ")
         print(moves)

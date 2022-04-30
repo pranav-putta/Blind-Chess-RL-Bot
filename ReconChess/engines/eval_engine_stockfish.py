@@ -21,22 +21,22 @@ class StockFishEvaluationEngine(base.SimulationEngine):
         arr = []
         for board in boards:
             score = 0
-            for attempt in range(1, 5):
-                try:
-                    score = self.engine.analyse(board, chess.engine.Limit(time=EVAL_TIME_LIMIT))['score'].relative.cp
-                    #score = self.engine.analyse(board, chess.engine.Limit(depth=20))['score'].relative.cp
-                    break
-                except AttributeError as ae:
-                    score = 100000
-                    print("Mate found")
-                except chess.engine.EngineError:
-                    print("ENGINE ERROR WHEN ATTEMPTING TO SCORE BOARD")
-                    print("The problematic board is: ")
-                    print(board)
-                    self.restart_engine()
-                except Exception as e:
-                    print("ok what the flip")
-                    print(e)
+            #for attempt in range(1, 5):
+            try:
+                score = self.engine.analyse(board, chess.engine.Limit(time=EVAL_TIME_LIMIT))['score'].relative.cp
+                #score = self.engine.analyse(board, chess.engine.Limit(depth=20))['score'].relative.cp
+                break
+            except AttributeError as ae:
+                score = 100000
+                print("Mate found")
+            except chess.engine.EngineError:
+                print("ENGINE ERROR WHEN ATTEMPTING TO SCORE BOARD")
+                print("The problematic board is: ")
+                print(board)
+                self.restart_engine()
+            except Exception as e:
+                print("ok what the flip")
+                print(e)
             arr.append(score)
         return np.array(arr)
 

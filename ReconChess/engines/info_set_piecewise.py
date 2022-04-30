@@ -36,7 +36,7 @@ class PiecewiseInformationSet(base.InformationSet):
         self.piecewisegrid.handle_sense_result(sense_result)
 
     def update_with_move(self, completed_move: chess.Move, captured_square: bool):
-        self.piecewisegrid.handle_player_move()
+        self.piecewisegrid.handle_player_move(completed_move, captured_square)
 
     def propagate_opponent_move(self, possible_moves: List[chess.Move], captured_square: bool, captured_piece: chess.Piece):
         self.piecewisegrid.handle_enemy_move(possible_moves, captured_square, captured_piece)
@@ -46,3 +46,6 @@ class PiecewiseInformationSet(base.InformationSet):
         new_infoset = PiecewiseInformationSet(chess.Board())
         new_infoset.piecewisegrid = new_grid
         return new_infoset
+
+if __name__ == "__main__":
+    pass

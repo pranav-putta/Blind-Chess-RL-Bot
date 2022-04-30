@@ -16,12 +16,15 @@ import copy
 
 class PiecewiseGrid:
     def __copy__(self):
-        newgrid = PiecewiseGrid()
+        newgrid = PiecewiseGrid(chess.Board())
         newgrid.piece_grids = np.copy(self.piece_grids)
         newgrid.piece_types = copy.deepcopy(self.piece_types)
         newgrid.own_pieces = copy.deepcopy(self.own_pieces)
         newgrid.captured = copy.deepcopy(self.captured_list)
         newgrid.promoted = copy.deepcopy(self.promoted)
+        newgrid.enemy_moves = copy.deepcopy(self.enemy_moves)
+        newgrid.enemy_pawn_columns = copy.deepcopy(self.enemy_moves)
+        return newgrid
 
     def __init__(self, board: chess.Board):
         self.piece_grids = np.zeros((8, 8, 32))
@@ -99,7 +102,7 @@ class PiecewiseGrid:
 
             for i in range(16):
                 piece_grid = self.piece_grids[:, :, i]
-                if self.captured_list[i] != None:
+                if self.captured_list[i] is None:
                     continue
 
                 if self.piece_types[i] == 'r' or self.piece_types[i] == 'q':
@@ -170,12 +173,17 @@ class PiecewiseGrid:
                 piece_chances /= np.sum(piece_chances)
                 piece_chances.reshape(32, 1)
             else: # we really have no clue which piece captured ours so we distribute it evenly among enemy pieces
-                piece_chances = np.array([1.0 / 16.0] * 16 + [0] * 16)
+
+                possible_capturors = [i for i in range(16) if not self.captured_list[i] is None and \
+                                      (i < 8 or file - 1 in self.enemy_pawn_columns[i] or file + 1 in self.enemy_pawn_columns[i])]
+                piece_chances = np.zeros(32)
+                piece_chances[possible_capturors] = 1.0 / len(possible_capturors)
+                #piece_chances = np.array([1.0 / 16.0] * 16 + [0] * 16)
 
             self.piece_grids = self.piece_grids * (1 - piece_chances)
 
             piece_mask = np.ones((8, 8))
-            piece_mask[file, rank] = 0
+            piece_mask[rank, file] = 0
             piece_mask = np.repeat(piece_mask[:, :, np.newaxis], 32, axis=2)
 
             self.piece_grids = self.piece_grids * piece_mask
@@ -400,8 +408,10 @@ class PiecewiseGrid:
             piece_grid[spaces] = 0
             if np.sum(piece_grid) < 0.001:
                 print("Oh no, no where to place this piece")
+                #b = chess.Board()
+                #b.set_piece_map(piece_map)
+                #print(b)
                 print(piece_grid_copy)
-                print(chess.Board(piece_map))
             piece_grid /= np.sum(piece_grid)
 
             num = np.random.choice(64, 1, p=piece_grid)[0]
