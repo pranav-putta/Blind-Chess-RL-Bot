@@ -208,6 +208,7 @@ class PiecewiseGrid:
                 piece_chances.reshape(32, 1)
             else: # we really have no clue which piece captured ours so we distribute it evenly among enemy pieces
                 print("We have no idea which enemy piece captured ours")
+                self.base_uncertainty[rank, file] = 0.8 # We really want to figure out what happened
                 possible_capturors = [i for i in range(16) if self.captured_list[i] is None and \
                                       (i < 8 or file - 1 in self.enemy_pawn_columns[i-8] or file + 1 in self.enemy_pawn_columns[i-8])]
                 piece_chances = np.zeros(32)
@@ -232,9 +233,7 @@ class PiecewiseGrid:
         KING_ATTACK = 0.25
         PIECE_PIN = 0.15
 
-        uncertainty = 0.5 - np.abs(0.5 - self.piece_grids) + self.base_uncertainty
-
-        # update count of when certain pieces were last sensed
+        uncertainty = 0.5 - np.abs(0.5 - self.piece_grids)
 
         board = self.gen_certain_board()
 
@@ -278,6 +277,17 @@ class PiecewiseGrid:
                 y += dir[1]
 
         uncertainty = np.max(uncertainty, axis=2)
+
+        # update count of when certain pieces were last sensed
+        certainties = np.max(self.piece_grids[:, :, :16], axis=2)
+        certainties[certainties < 0.99] = 0.0
+        certainties[certainties >= 0.99] = 0.1
+        self.last_sensed += certainties
+        self.last_sensed[self.last_sensed > 1.0] = 1.0
+
+        uncertainty += self.last_sensed
+        uncertainty += self.base_uncertainty
+
         return uncertainty
 
     def get_total_uncertainty(self):
@@ -296,9 +306,9 @@ class PiecewiseGrid:
         """
 
         # finds which 3x3 squares have the highest uncertainties
-        self.uncertainties = signal.convolve2d(self.get_board_uncertainty(), np.ones((3, 3)), mode="same")
+        uncertainties = signal.convolve2d(self.get_board_uncertainty(), np.ones((3, 3)), mode="same")
 
-        rank, file = np.unravel_index(np.argmax(self.uncertainties), (8, 8))
+        rank, file = np.unravel_index(np.argmax(uncertainties), (8, 8))
         return chess.square(file, rank)
 
     def handle_sense_result(self, sense_result):
@@ -369,6 +379,9 @@ class PiecewiseGrid:
             file = chess.square_file(loc[0])
             rank = chess.square_rank(loc[0])
 
+            self.base_uncertainty[rank, file] = 0.0
+            self.last_sensed[rank, file] = 0.0
+
             # if there is a piece, find which one it is and update probabilities accordingly
             if not loc[1] is None:
                 max = -1.0
@@ -416,7 +429,7 @@ class PiecewiseGrid:
             else: # we have no clue which piece we just captured
                 print("We have no clue which piece it is")
                 piece = 4
-                while piece != 4: # guess anything so long as it's not the king
+                while piece == 4: # guess anything so long as it's not the king
                     piece = random.randint(0, 16)
                 captured_list = np.delete(np.arange(0, 16), piece)
                 captured_list = np.delete(captured_list, 4)

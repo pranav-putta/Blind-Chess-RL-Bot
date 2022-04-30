@@ -107,7 +107,7 @@ class LaSalleAgent(Player):
         """
         square = self.piecewisegrid.choose_sense()
         print("SENSE CHOSEN")
-        print(square)
+        print(chess.square_name(square))
         return square
 
     def handle_sense_result(self, sense_result):
