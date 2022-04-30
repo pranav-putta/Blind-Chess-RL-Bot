@@ -8,8 +8,9 @@ import random
 # to convolve uncertainties
 from scipy import signal
 
-order = [4, 20, 3, 19, 7, 23, 0, 16, 6, 22, 1, 17, 5, 21, 2, 18, 8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30,
-         15, 31]
+#order = [4, 20, 3, 19, 7, 23, 0, 16, 6, 22, 1, 17, 5, 21, 2, 18, 8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30,
+         #15, 31]
+order = [20, 19, 23, 16, 22, 17, 21, 18, 24, 25, 26, 27, 28, 29, 30, 31, 4, 3, 7, 0, 6, 1, 5, 2, 8, 9, 10, 11, 12, 13, 14, 15]
 
 import copy
 
@@ -83,7 +84,7 @@ class PiecewiseGrid:
     def handle_enemy_move(self, possible_moves: List[Tuple[chess.Move, chess.PieceType, float]], captured_piece: bool, captured_square: chess.Square):
         self.piece_grids_temp = self.piece_grids.copy()
         self.enemy_moves = possible_moves
-        if captured_piece:
+        if captured_piece: # TODO: Fix this, something here is not quite working
             file = chess.square_file(captured_square)
             rank = chess.square_rank(captured_square)
 
@@ -154,12 +155,16 @@ class PiecewiseGrid:
                     if file - 1 >= 0 and rank - 2 >= 0:
                         piece_chances[i] += piece_grid[rank - 2, file - 1]
 
-                if self.piece_types[i] == 'p':
+                if self.piece_types[i] == 'p' and rank - 1 >= 0 and file - 1 >= 0:
                     piece_chances[i] += piece_grid[rank - 1, file - 1]
+                if self.piece_types[i] == 'p' and rank - 1 >= 0 and file + 1 < 8:
                     piece_chances[i] += piece_grid[rank - 1, file + 1]
 
-            piece_chances /= np.sum(piece_chances)
-            piece_chances.reshape(32, 1)
+            if np.sum(piece_chances > 0.001):
+                piece_chances /= np.sum(piece_chances)
+                piece_chances.reshape(32, 1)
+            else: # we really have no clue which piece captured ours so we distribute it evenly among enemy pieces
+                piece_chances = np.array([1.0 / 16.0] * 16 + [0] * 16)
 
             self.piece_grids = self.piece_grids * (1 - piece_chances)
 
@@ -192,11 +197,15 @@ class PiecewiseGrid:
             x = file + dir[0]
             y = rank + dir[1]
             if x < 8 and y < 8 and x >= 0 and y >= 0 and board.piece_at(chess.square(x,y)) == None:
-                uncertainty[y, x, knights] += KING_ATTACK
+                try:
+                    uncertainty[y, x, knights] += KING_ATTACK
+                except IndexError as ie:
+                    print("ERROR WHEN TRYING TO INDEX KNIGHTS")
+                    print(knights)
 
         # add uncertainty from sliding attacks
-        straight_attackers = [(self.piece_types[i] == 'q' or self.piece_types[i] == 'r') and self.captured_list[i] == None for i in range(32)]
-        diagonal_attackers = [(self.piece_types[i] == 'q' or self.piece_types[i] == 'b') and self.captured_list[i] == None for i in range(32)]
+        straight_attackers = [bool((self.piece_types[i] == 'q' or self.piece_types[i] == 'r') and bool(self.captured_list[i] == None)) for i in range(32)]
+        diagonal_attackers = [bool((self.piece_types[i] == 'q' or self.piece_types[i] == 'b') and bool(self.captured_list[i] == None)) for i in range(32)]
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]
         for i, dir in enumerate(directions):
             x = file + dir[0]
@@ -208,7 +217,12 @@ class PiecewiseGrid:
                 if piece != None:
                     num_hits += 1 if piece.color == chess.WHITE else 2
                 else:
-                    uncertainty[y, x, straight_attackers if i < 4 else diagonal_attackers] += KING_ATTACK if num_hits == 0 else PIECE_PIN
+                    try:
+                        uncertainty[y, x, straight_attackers if i < 4 else diagonal_attackers] += KING_ATTACK if num_hits == 0 else PIECE_PIN
+                    except IndexError as ie:
+                        print("ERROR WHEN TRYING TO INDEX SLIDING")
+                        print(straight_attackers)
+                        print(diagonal_attackers)
                 x += dir[0]
                 y += dir[1]
 
@@ -252,59 +266,75 @@ class PiecewiseGrid:
         """
 
         if len(self.enemy_moves) > 0:
-            probs = self.piece_grids_temp.sum(axis=2)
             maxes = self.piece_grids_temp.max(axis=2)
 
             # prune enemy moves that are no longer possible
             # might not be the most efficient algorithm for this, but it works for now
             for loc in sense_result:
+                if loc[1] != None and loc[1].color == chess.WHITE:
+                    continue
+
                 file = chess.square_file(loc[0])
                 rank = chess.square_rank(loc[0])
 
                 # if there was no piece in the square previously and there is one there now, we know that piece moved
-                if probs[rank, file] < 0.001 and loc[1] != None:
+                if maxes[rank, file] < 0.001 and loc[1] != None:
                     piece_type = loc[1].symbol()
                     self.enemy_moves = [x for x in self.enemy_moves if x[1] == piece_type]
 
                 # if we know where a piece is for certain, we can make some inferences
-                if maxes[rank, file] > 0.99:
+                if maxes[rank, file] > 0.999:
                     piece_index = np.argmax(self.piece_grids[rank, file, :])
                     piece_type = self.piece_types[piece_index]
 
-                    # TODO: Fix this bullshit
                     if loc[1] == None:  # if it's no longer there, it must have moved
                         self.enemy_moves = [x for x in self.enemy_moves if x[1] == piece_type]
                     elif loc[1].symbol() == piece_type:  # if it's still there, it can't have moved
                         self.enemy_moves = [x for x in self.enemy_moves if x[1] != piece_type]
 
+                # TODO: Add more inferences for how the pieces might have moved
+
             self.piece_grids = self.piece_grids_temp
 
-            if len(self.enemy_moves) == 0:
+            if len(self.enemy_moves) == 0: # We literally have no clue what move the enemy could have made
                 print("WE SHOULD NOT BE HERE")
-
-            # renormalize move probabilities
-            moves, piece_types, chances = zip(*self.enemy_moves)
-            chances = np.array(chances)
-            chances /= np.sum(chances)
-            self.enemy_moves = list(zip(moves, piece_types, chances.tolist()))
+            else:
+                # renormalize move probabilities
+                moves, piece_types, chances = zip(*self.enemy_moves)
+                chances = np.array(chances)
+                chances /= np.sum(chances)
+                self.enemy_moves = list(zip(moves, piece_types, chances.tolist()))
 
         # make a second update to probability grid with more informed enemy moves
         self.update_prob_board_from_moves(self.enemy_moves)
 
         # update piece grid based on sense results
-        # TODO: THIS PLACE IS A BUGGY MESS
         handled = [False] * 32
         for loc in sense_result:
+            # we don't check our own pieces in the sense result
+            if loc[1] != None and loc[1].color == chess.WHITE:
+                continue
+
             file = chess.square_file(loc[0])
             rank = chess.square_rank(loc[0])
 
-            self.piece_grids[rank, file, :] *= 0
-
             # if there is a piece, find which one it is and update probabilities accordingly
             if loc[1] != None:
-                piece_index = [i for i, x in enumerate(self.piece_types) if x == loc[1].symbol() and not handled[i]][0]
+                max = -1.0
+                piece_index = 0
+                for i in range(16):
+                    #print(self.piece_types[i])
+                    #print(loc[1])
+                    #print(self.piece_grids[rank, file, i])
+                    #print(max)
+                    #print(not handled[i])
+                    if self.piece_types[i] == loc[1].symbol() and self.piece_grids[rank, file, i] > max and not handled[i]:
+                        max = self.piece_grids[rank, file, i]
+                        piece_index = i
+
                 self.piece_grids[:, :, piece_index] = np.zeros((8, 8))
-                self.piece_grids[rank, file, piece_index] = 1
+                self.piece_grids[rank, file, :] *= 0
+                self.piece_grids[rank, file, piece_index] = 1.0
                 handled[piece_index] = True
 
             # todo: pawns need more logic to handle duplicates
@@ -325,10 +355,13 @@ class PiecewiseGrid:
         piece_loc = np.argmax(self.piece_grids[from_rank, from_file, 16:]) + 16
         self.piece_grids[from_rank, from_file, piece_loc] = 0.0
 
+        # TODO: Come up with better variable names for whatever is in this method
+
         # find out which piece was probably captured, and which pieces could have been captured
         if captured_piece:
             piece = np.argmax(self.piece_grids[to_rank, to_file, :])
-            captured_list = np.arange(0, 32)[self.piece_grids[to_rank, to_file, :] > 0.001]
+            indices = np.delete(np.arange(0, 32), piece)
+            captured_list = np.delete(np.arange(0, 32), piece)[self.piece_grids[to_rank, to_file, indices] > 0.001]
             self.captured_list[piece] = captured_list
             self.piece_grids[:, :, piece] = np.zeros((8, 8))
 
@@ -361,7 +394,12 @@ class PiecewiseGrid:
             if np.sum(piece_grid) < 0.001:
                 continue
 
+            piece_grid_copy = piece_grid.copy()
             piece_grid[spaces] = 0
+            if np.sum(piece_grid) < 0.001:
+                print("Oh no, no where to place this piece")
+                print(piece_grid_copy)
+                print(board)
             piece_grid /= np.sum(piece_grid)
 
             num = np.random.choice(64, 1, p=piece_grid)[0]
@@ -376,4 +414,7 @@ class PiecewiseGrid:
         piece_grids_copy = self.piece_grids.copy()
         piece_grids_copy[piece_grids_copy == 0] = 1.0 # entropy is zero when probability is zero or one, but log breaks with zero
 
-        return int(2 ** (-np.sum(piece_grids_copy * np.log(piece_grids_copy))))
+        entropy = -np.sum(piece_grids_copy * np.log(piece_grids_copy))
+        entropy = 2 ** entropy
+
+        return int(entropy)

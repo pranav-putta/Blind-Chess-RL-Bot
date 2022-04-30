@@ -26,8 +26,15 @@ class StockFishEvaluationEngine(base.SimulationEngine):
                     score = self.engine.analyse(board, chess.engine.Limit(time=EVAL_TIME_LIMIT))['score'].relative.cp
                     #score = self.engine.analyse(board, chess.engine.Limit(depth=20))['score'].relative.cp
                     break
+                except AttributeError as ae:
+                    print("DEBUG HERE")
                 except chess.engine.EngineError:
+                    print("ENGINE ERROR WHEN ATTEMPTING TO SCORE BOARD")
+                    print("The problematic board is: ")
+                    print(board)
                     self.restart_engine()
+                except Exception as e:
+                    print("ok what the flip")
             arr.append(score)
         return np.array(arr)
 
@@ -52,6 +59,9 @@ class StockFishEvaluationEngine(base.SimulationEngine):
                 moves.append(result.move)
                 continue
             except chess.engine.EngineTerminatedError:
+                print("ENGINE TERMINATED ERROR")
+                print("The board that caused this looks like:")
+                print(board)
                 exit()
                 self.restart_engine()
             except chess.engine.EngineError:

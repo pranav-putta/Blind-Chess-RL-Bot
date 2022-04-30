@@ -60,7 +60,7 @@ class LaSalleAgent(Player):
         print("OPPONENT MOVES: ")
         print(moves)
         print(self.piecewisegrid.gen_board())
-        print(self.piecewisegrid.gen_certain_board())
+        #print(self.piecewisegrid.gen_certain_board())
         chances = [1.0 / len(moves) for move in moves]
         piece_types = [board.piece_at(move.from_square).piece_type for board, move in zip(samples, moves)]
 
@@ -93,7 +93,6 @@ class LaSalleAgent(Player):
             (A6, None), (B6, None), (C8, None)
         ]
         """
-        # TODO: implement this method
         # Hint: until this method is implemented, any senses you make will be lost.
         self.piecewisegrid.handle_sense_result(sense_result)
 
@@ -114,7 +113,6 @@ class LaSalleAgent(Player):
         # change this to depend on total uncertainty
         num_samples = self.piecewisegrid.num_board_states() + 1
         samples = []
-        print("SAMPLES")
         for sample in range(num_samples):
             board = self.piecewisegrid.gen_board()
             board.color = chess.WHITE
