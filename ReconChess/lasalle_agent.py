@@ -47,6 +47,7 @@ class LaSalleAgent(Player):
 
         #num_samples = 50
         num_samples = self.piecewisegrid.num_board_states() + 1
+        print("NUM SAMPLES: " + str(num_samples))
         samples = []
         for sample in range(num_samples):
             board = self.piecewisegrid.gen_board().mirror()
@@ -54,11 +55,12 @@ class LaSalleAgent(Player):
             samples.append(board)
 
         moves = self.engine.best_moves(samples)
+        moves = [move for move in moves if not move is None]
         random_moves = []
         piece_types = []
         random_piece_types = []
         # mirrors move to opponent's side
-        for i in range(num_samples):
+        for i in range(len(moves)):
             move = moves[i]
             piece_types.append(samples[i].piece_at(move.from_square).piece_type)
             move.from_square = chess.square_mirror(move.from_square)
@@ -68,7 +70,7 @@ class LaSalleAgent(Player):
 
             for j in range(10):
                 random_moves.append(random.choice(list(samples[i].pseudo_legal_moves)))
-                random_piece_types.append(samples[i].piece_at(random_moves[-1].from_square))
+                random_piece_types.append(samples[i].piece_at(random_moves[-1].from_square).piece_type)
 
             samples[i] = samples[i].mirror()
 
@@ -103,7 +105,10 @@ class LaSalleAgent(Player):
         :return: chess.SQUARE -- the center of 3x3 section of the board you want to sense
         :example: choice = chess.A1
         """
-        return self.piecewisegrid.choose_sense()
+        square = self.piecewisegrid.choose_sense()
+        print("SENSE CHOSEN")
+        print(square)
+        return square
 
     def handle_sense_result(self, sense_result):
         """
@@ -158,16 +163,16 @@ class LaSalleAgent(Player):
             for board in evaluation_samples:
                 board.push(move)
             score = self.engine.score_boards(samples)
-            for board in samples:
+            for board in evaluation_samples:
                 board.pop()
 
             scores.append(np.sum(score))
 
-        print(moves)
-        print(scores)
-        print(np.argmax(scores))
-        print("THE PLAYER HAS DECIDED ON A MOVE OF: ")
-        print(moves[np.argmax(scores)])
+        #print(moves)
+        #print(scores)
+        #print(np.argmax(scores))
+        #print("THE PLAYER HAS DECIDED ON A MOVE OF: ")
+        #print(moves[np.argmax(scores)])
         return moves[np.argmax(scores)]
 
     def handle_move_result(self, requested_move, taken_move, reason, captured_piece, captured_square):

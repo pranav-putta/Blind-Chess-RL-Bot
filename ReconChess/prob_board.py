@@ -27,8 +27,8 @@ class PiecewiseGrid:
         return newgrid
 
     def mirror(self):
-        np.flip(self.piece_grids, axis=0)
-        np.flip(self.piece_grids, axis=1)
+        self.piece_grids = np.flip(self.piece_grids, axis=0)
+        self.piece_grids = np.flip(self.piece_grids, axis=1)
 
         temp = self.piece_grids[:, :, :16].copy()
         self.piece_grids[:, :, :16] = self.piece_grids[:, :, 16:]
@@ -41,8 +41,9 @@ class PiecewiseGrid:
         # give enemy perfect information about our pawns
         self.enemy_pawn_columns = []
         for i in range(8):
-            rank, file = np.unravel_index(np.argmax(self.piece_grids[:, :, i + 24]))
+            rank, file = np.unravel_index(np.argmax(self.piece_grids[:, :, i + 24]), (8, 8))
             self.enemy_pawn_columns.append([file])
+
 
     def swap(self, arr, slice1: slice, slice2: slice):
         temp = copy.deepcopy(arr[slice1])
@@ -59,6 +60,9 @@ class PiecewiseGrid:
         self.promoted = [False] * 32
         self.enemy_moves = []
         self.enemy_pawn_columns = [ [i] for i in range(8) ] # possible columns the enemy's pawns could be in
+
+        self.base_uncertainty = np.zeros((8, 8))
+        self.last_sensed = np.zeros((8, 8))
 
         for i in range(32):
             piece = chess.Piece.from_symbol(self.piece_types[i])
@@ -228,7 +232,9 @@ class PiecewiseGrid:
         KING_ATTACK = 0.25
         PIECE_PIN = 0.15
 
-        uncertainty = 0.5 - np.abs(0.5 - self.piece_grids)
+        uncertainty = 0.5 - np.abs(0.5 - self.piece_grids) + self.base_uncertainty
+
+        # update count of when certain pieces were last sensed
 
         board = self.gen_certain_board()
 
@@ -236,7 +242,7 @@ class PiecewiseGrid:
         rank, file = np.unravel_index(np.argmax(self.piece_grids[:, :, 20]), (8, 8))
 
         # add uncertainty from knight attacks
-        knights = [self.piece_types[i] == 'n' and self.captured_list[i] == None for i in range(32)]
+        knights = [self.piece_types[i] == 'n' and self.captured_list[i] is None for i in range(32)]
         knight_directions = [(2, 1), (1, 2), (-1, 2), (-2, 1), (1, -2), (2, -1), (-2, -1), (-1, -2)]
         for dir in knight_directions:
             x = file + dir[0]
@@ -249,8 +255,8 @@ class PiecewiseGrid:
                     print(knights)
 
         # add uncertainty from sliding attacks
-        straight_attackers = [bool((self.piece_types[i] == 'q' or self.piece_types[i] == 'r') and bool(self.captured_list[i] == None)) for i in range(32)]
-        diagonal_attackers = [bool((self.piece_types[i] == 'q' or self.piece_types[i] == 'b') and bool(self.captured_list[i] == None)) for i in range(32)]
+        straight_attackers = [(self.piece_types[i] == 'q' or self.piece_types[i] == 'r') and self.captured_list[i] is None for i in range(32)]
+        diagonal_attackers = [(self.piece_types[i] == 'q' or self.piece_types[i] == 'b') and self.captured_list[i] is None for i in range(32)]
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]
         for i, dir in enumerate(directions):
             x = file + dir[0]
