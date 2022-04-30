@@ -410,7 +410,8 @@ class PiecewiseGrid:
 
             spaces.append(num)
 
-        board = chess.Board(piece_map)
+        board = chess.Board()
+        board.set_piece_map(piece_map)
         return board
 
     def num_board_states(self) -> int:
