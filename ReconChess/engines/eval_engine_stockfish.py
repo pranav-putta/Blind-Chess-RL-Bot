@@ -72,6 +72,6 @@ class StockFishEvaluationEngine(base.SimulationEngine):
                     print('Stockfish Engine bad state at "{}"'.format(board.fen()))
                     util.format_print_board(board)
 
-            # if all else fails, pass
-            moves.append(None)
+                # if all else fails, pass
+                moves.append(None)
         return moves

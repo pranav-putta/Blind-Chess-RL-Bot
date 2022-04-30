@@ -23,8 +23,31 @@ class PiecewiseGrid:
         newgrid.captured = copy.deepcopy(self.captured_list)
         newgrid.promoted = copy.deepcopy(self.promoted)
         newgrid.enemy_moves = copy.deepcopy(self.enemy_moves)
-        newgrid.enemy_pawn_columns = copy.deepcopy(self.enemy_moves)
+        newgrid.enemy_pawn_columns = copy.deepcopy(self.enemy_pawn_columns)
         return newgrid
+
+    def mirror(self):
+        np.flip(self.piece_grids, axis=0)
+        np.flip(self.piece_grids, axis=1)
+
+        temp = self.piece_grids[:, :, :16].copy()
+        self.piece_grids[:, :, :16] = self.piece_grids[:, :, 16:]
+        self.piece_grids[:, :, 16:] = temp
+
+        self.swap(self.captured_list, slice(0, 16), slice(16, 32))
+        self.swap(self.promoted, slice(0, 16), slice(16, 32))
+        self.enemy_moves = []
+
+        # give enemy perfect information about our pawns
+        self.enemy_pawn_columns = []
+        for i in range(8):
+            rank, file = np.unravel_index(np.argmax(self.piece_grids[:, :, i + 24]))
+            self.enemy_pawn_columns.append([file])
+
+    def swap(self, arr, slice1: slice, slice2: slice):
+        temp = copy.deepcopy(arr[slice1])
+        arr[slice1] = arr[slice2]
+        arr[slice2] = temp
 
     def __init__(self, board: chess.Board):
         self.piece_grids = np.zeros((8, 8, 32))
@@ -89,6 +112,7 @@ class PiecewiseGrid:
         self.piece_grids_temp = self.piece_grids.copy()
         self.enemy_moves = possible_moves
         if captured_piece: # TODO: Fix this, something here is not quite working
+            print("The enemy captured our piece")
             file = chess.square_file(captured_square)
             rank = chess.square_rank(captured_square)
 
@@ -100,9 +124,15 @@ class PiecewiseGrid:
             piece_chances = np.array([0.0] * 32)
             board = self.gen_certain_board()
 
+            # take our own piece out of the game
+            our_piece = np.argmax(self.piece_grids[rank, file, 16:32]) + 16
+            print("The enemy has captured our piece of " + self.piece_types[our_piece])
+            self.captured_list[our_piece] = []
+            self.piece_grids[:, :, our_piece] = 0.0
+
             for i in range(16):
                 piece_grid = self.piece_grids[:, :, i]
-                if self.captured_list[i] is None:
+                if not self.captured_list[i] is None:
                     continue
 
                 if self.piece_types[i] == 'r' or self.piece_types[i] == 'q':
@@ -173,9 +203,9 @@ class PiecewiseGrid:
                 piece_chances /= np.sum(piece_chances)
                 piece_chances.reshape(32, 1)
             else: # we really have no clue which piece captured ours so we distribute it evenly among enemy pieces
-
-                possible_capturors = [i for i in range(16) if not self.captured_list[i] is None and \
-                                      (i < 8 or file - 1 in self.enemy_pawn_columns[i] or file + 1 in self.enemy_pawn_columns[i])]
+                print("We have no idea which enemy piece captured ours")
+                possible_capturors = [i for i in range(16) if self.captured_list[i] is None and \
+                                      (i < 8 or file - 1 in self.enemy_pawn_columns[i-8] or file + 1 in self.enemy_pawn_columns[i-8])]
                 piece_chances = np.zeros(32)
                 piece_chances[possible_capturors] = 1.0 / len(possible_capturors)
                 #piece_chances = np.array([1.0 / 16.0] * 16 + [0] * 16)
@@ -189,7 +219,8 @@ class PiecewiseGrid:
             self.piece_grids = self.piece_grids * piece_mask
 
             for i in range(32):
-                self.piece_grids[rank, file, i] = piece_chances[i]
+                if self.captured_list[i] is None:
+                    self.piece_grids[rank, file, i] = piece_chances[i]
         else:
             self.update_prob_board_from_moves(self.enemy_moves)
 
@@ -228,7 +259,7 @@ class PiecewiseGrid:
 
             while x < 8 and x >= 0 and y < 8 and y >= 0 and num_hits < 2:
                 piece = board.piece_at(chess.square(x, y))
-                if piece != None:
+                if not piece is None:
                     num_hits += 1 if piece.color == chess.WHITE else 2
                 else:
                     try:
@@ -285,14 +316,14 @@ class PiecewiseGrid:
             # prune enemy moves that are no longer possible
             # might not be the most efficient algorithm for this, but it works for now
             for loc in sense_result:
-                if loc[1] != None and loc[1].color == chess.WHITE:
+                if not loc[1] is None and loc[1].color == chess.WHITE:
                     continue
 
                 file = chess.square_file(loc[0])
                 rank = chess.square_rank(loc[0])
 
                 # if there was no piece in the square previously and there is one there now, we know that piece moved
-                if maxes[rank, file] < 0.001 and loc[1] != None:
+                if maxes[rank, file] < 0.001 and not loc[1] is None:
                     piece_type = loc[1].symbol()
                     self.enemy_moves = [x for x in self.enemy_moves if x[1] == piece_type]
 
@@ -326,14 +357,14 @@ class PiecewiseGrid:
         handled = [False] * 32
         for loc in sense_result:
             # we don't check our own pieces in the sense result
-            if loc[1] != None and loc[1].color == chess.WHITE:
+            if not loc[1] is None and loc[1].color == chess.WHITE:
                 continue
 
             file = chess.square_file(loc[0])
             rank = chess.square_rank(loc[0])
 
             # if there is a piece, find which one it is and update probabilities accordingly
-            if loc[1] != None:
+            if not loc[1] is None:
                 max = -1.0
                 piece_index = 0
 
@@ -370,10 +401,20 @@ class PiecewiseGrid:
 
         # find out which piece was probably captured, and which pieces could have been captured
         if captured_piece:
-            piece = np.argmax(self.piece_grids[to_rank, to_file, :])
-            indices = np.delete(np.arange(0, 32), piece)
-            captured_list = np.delete(np.arange(0, 32), piece)[self.piece_grids[to_rank, to_file, indices] > 0.001]
-            self.captured_list[piece] = captured_list
+            print("We just captured a piece")
+            if np.sum(self.piece_grids[to_rank, to_file, :16]) > 0.001:
+                piece = np.argmax(self.piece_grids[to_rank, to_file, :16])
+                indices = np.delete(np.arange(0, 16), piece)
+                captured_list = np.delete(np.arange(0, 16), piece)[self.piece_grids[to_rank, to_file, indices] > 0.001]
+                self.captured_list[piece] = captured_list
+            else: # we have no clue which piece we just captured
+                print("We have no clue which piece it is")
+                piece = 4
+                while piece != 4: # guess anything so long as it's not the king
+                    piece = random.randint(0, 16)
+                captured_list = np.delete(np.arange(0, 16), piece)
+                captured_list = np.delete(captured_list, 4)
+                self.captured_list[piece] = captured_list
             self.piece_grids[:, :, piece] = np.zeros((8, 8))
 
         self.piece_grids[to_rank, to_file, piece_loc] = 1.0
@@ -398,6 +439,9 @@ class PiecewiseGrid:
         piece_map = {}
 
         for i in order:
+            if not self.captured_list[i] is None:
+                continue
+
             # transposing from numpy format to board format begins here
             piece_grid = np.copy(self.piece_grids[:, :, i]).flatten()
 
@@ -412,13 +456,14 @@ class PiecewiseGrid:
                 #b.set_piece_map(piece_map)
                 #print(b)
                 print(piece_grid_copy)
-            piece_grid /= np.sum(piece_grid)
+            else:
+                piece_grid /= np.sum(piece_grid)
 
-            num = np.random.choice(64, 1, p=piece_grid)[0]
-            # and ends here when flattened index is reinterpreted as board index
-            piece_map[num] = chess.Piece.from_symbol(self.piece_types[i])
+                num = np.random.choice(64, 1, p=piece_grid)[0]
+                # and ends here when flattened index is reinterpreted as board index
+                piece_map[num] = chess.Piece.from_symbol(self.piece_types[i])
 
-            spaces.append(num)
+                spaces.append(num)
 
         board = chess.Board()
         board.set_piece_map(piece_map)

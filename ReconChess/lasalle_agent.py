@@ -43,7 +43,7 @@ class LaSalleAgent(Player):
             self.firstmove = False
             return
 
-        stockfish_vs_random = 0.8
+        stockfish_vs_random = 0.1
 
         #num_samples = 50
         num_samples = self.piecewisegrid.num_board_states() + 1
@@ -54,29 +54,37 @@ class LaSalleAgent(Player):
             samples.append(board)
 
         moves = self.engine.best_moves(samples)
+        random_moves = []
+        piece_types = []
+        random_piece_types = []
         # mirrors move to opponent's side
         for i in range(num_samples):
             move = moves[i]
-            move.from_square = chess.square(7 - chess.square_file(move.from_square), 7 - chess.square_rank(move.from_square))
-            move.to_square = chess.square(7 - chess.square_file(move.to_square), 7 - chess.square_rank(move.to_square))
-            samples[i] = samples[i].mirror()
-        chances = [stockfish_vs_random / len(moves) for move in moves]
-        piece_types = []
-        for board, move in zip(samples, moves):
-            piece_types.append(board.piece_at(move.from_square).piece_type)
-        #piece_types = [board.piece_at(move.from_square).piece_type for board, move in zip(samples, moves)]
+            piece_types.append(samples[i].piece_at(move.from_square).piece_type)
+            move.from_square = chess.square_mirror(move.from_square)
+            move.to_square = chess.square_mirror(move.to_square)
+            #move.from_square = chess.square(chess.square_file(move.from_square), 7 - chess.square_rank(move.from_square))
+            #move.to_square = chess.square(chess.square_file(move.to_square), 7 - chess.square_rank(move.to_square))
 
-        #random_moves = []
-        #for board in samples:
-            #for i in range(5):
-                #random_moves.append(random.choice(list(board.pseudo_legal_moves)))
+            for j in range(10):
+                random_moves.append(random.choice(list(samples[i].pseudo_legal_moves)))
+                random_piece_types.append(samples[i].piece_at(random_moves[-1].from_square))
+
+            samples[i] = samples[i].mirror()
+
+        chances = [stockfish_vs_random / len(moves) for move in moves]
+        random_chances = [(1 - stockfish_vs_random) / len(random_moves) for move in random_moves]
+        #piece_types = []
+        #for board, move in zip(samples, moves):
+            #piece_types.append(board.piece_at(move.from_square).piece_type)
+        #piece_types = [board.piece_at(move.from_square).piece_type for board, move in zip(samples, moves)]
 
         #random_chances = [(1 - stockfish_vs_random) / len(random_moves) for move in random_moves]
         #random_piece_types = [board.piece_at(move.from_square).piece_type for board, move in zip(samples, random_moves)]
 
-        #moves += random_moves
-        #chances += random_chances
-        #piece_types += random_piece_types
+        moves += random_moves
+        chances += random_chances
+        piece_types += random_piece_types
 
         print("OPPONENT MOVES: ")
         print(moves)
@@ -146,7 +154,8 @@ class LaSalleAgent(Player):
             samples.append(self.piecewisegrid.gen_board())
 
         for move in moves:
-            for board in samples:
+            evaluation_samples = [ board for board in samples if board.is_legal(move)]
+            for board in evaluation_samples:
                 board.push(move)
             score = self.engine.score_boards(samples)
             for board in samples:
@@ -157,6 +166,7 @@ class LaSalleAgent(Player):
         print(moves)
         print(scores)
         print(np.argmax(scores))
+        print("THE PLAYER HAS DECIDED ON A MOVE OF: ")
         print(moves[np.argmax(scores)])
         return moves[np.argmax(scores)]
 
