@@ -43,7 +43,7 @@ class LaSalleAgent(Player):
             self.firstmove = False
             return
 
-        stockfish_vs_random = 0.1
+        stockfish_vs_random = 0.9
 
         #num_samples = 50
         num_samples = self.piecewisegrid.num_board_states() + 1
@@ -142,7 +142,7 @@ class LaSalleAgent(Player):
         """
 
         # change this to depend on total uncertainty
-        num_samples = self.piecewisegrid.num_board_states() + 1
+        num_samples = self.piecewisegrid.num_board_states() + 3
         samples = []
         for sample in range(num_samples):
             board = self.piecewisegrid.gen_board()

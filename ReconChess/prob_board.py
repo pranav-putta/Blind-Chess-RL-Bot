@@ -24,6 +24,8 @@ class PiecewiseGrid:
         newgrid.promoted = copy.deepcopy(self.promoted)
         newgrid.enemy_moves = copy.deepcopy(self.enemy_moves)
         newgrid.enemy_pawn_columns = copy.deepcopy(self.enemy_pawn_columns)
+        newgrid.base_uncertainty = self.base_uncertainty.copy()
+        newgrid.last_sensed = self.last_sensed.copy()
         return newgrid
 
     def mirror(self):
@@ -37,6 +39,9 @@ class PiecewiseGrid:
         self.swap(self.captured_list, slice(0, 16), slice(16, 32))
         self.swap(self.promoted, slice(0, 16), slice(16, 32))
         self.enemy_moves = []
+
+        self.base_uncertainty = np.zeros((8, 8))
+        self.last_sensed = np.zeros((8, 8))
 
         # give enemy perfect information about our pawns
         self.enemy_pawn_columns = []
@@ -430,7 +435,7 @@ class PiecewiseGrid:
                 print("We have no clue which piece it is")
                 piece = 4
                 while piece == 4: # guess anything so long as it's not the king
-                    piece = random.randint(0, 16)
+                    piece = random.randint(0, 15)
                 captured_list = np.delete(np.arange(0, 16), piece)
                 captured_list = np.delete(captured_list, 4)
                 self.captured_list[piece] = captured_list
@@ -441,6 +446,9 @@ class PiecewiseGrid:
         divider = self.piece_grids.sum((0, 1)).reshape(1, 1, 32)
         divider[divider < 0.001] = 1
         self.piece_grids /= divider
+
+        if np.sum(self.piece_grids[:, :, 4] < 0.01):
+            print("CODE RED WE LOST THE KING!!!!")
 
     def gen_certain_board(self):
         board = chess.Board()
