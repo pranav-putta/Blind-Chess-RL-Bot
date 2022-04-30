@@ -4,7 +4,7 @@ from typing import List, Tuple, Any
 import engines.base as base
 
 from prob_board import PiecewiseGrid
-from game import Game
+from engines.game import Game
 
 import numpy as np
 
@@ -39,18 +39,37 @@ class PiecewiseInformationSet(base.InformationSet):
         g.black_board = board
         return g
 
+    def size(self):
+        entropy = 0
+        for i in range(32):
+            probs = self.piecewisegrid.piece_grids[:, :, i].flatten()
+            entropy += np.sum(-probs * np.log2(probs + 1e-10))
+        return round(2 ** entropy)
+
     def update_with_sense(self, sense_result: List[Tuple[chess.Square, chess.Piece]]):
         self.piecewisegrid.handle_sense_result(sense_result)
 
     def update_with_move(self, move_result):
-        pass  # not implemented yet
+        move, captured_piece = move_result
+        self.piecewisegrid.handle_player_move(move, captured_piece)
 
     def propagate_opponent_move(self, possible_moves: List[chess.Move], captured_square: bool,
                                 captured_piece: chess.Piece):
         self.piecewisegrid.handle_enemy_move(possible_moves, captured_square, captured_piece)
 
+    def mirror(self):
+        return self.piecewisegrid.mirror()
+
     def __copy__(self):
-        new_grid = np.copy(self.piecewisegrid.piece_grids)
+        new_grid = self.piecewisegrid.__copy__()
         new_infoset = PiecewiseInformationSet(Game())
-        new_infoset.piecewisegrid.piece_grids = new_grid
+        new_infoset.piecewisegrid = new_grid
         return new_infoset
+
+    def __repr__(self):
+        sample = self.random_sample()
+        return str(sample.truth_board)
+
+    def __str__(self):
+        sample = self.random_sample()
+        return str(sample.truth_board)

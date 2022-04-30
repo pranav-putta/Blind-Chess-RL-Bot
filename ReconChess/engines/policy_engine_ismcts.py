@@ -1,181 +1,158 @@
+import random
+
 import chess
+import numpy as np
+
 import engines.base as base
 
-import numpy as np
+from collections import namedtuple
 from typing import List, Tuple, Any, Dict, Type, Mapping
-from engines.base import Player
-from game import Game
+from engines.game import Game
+import math
+from tqdm import tqdm
+from engines.eval_engine_network import move_to_feature_index, feature_output_to_move
 
-
-class Node:
-    info_set: base.InformationSet
-
-    children: Dict
-    incoming_edge: Any
-    parent: Any
-
-    visit_count: int
-    total_rewards: float
-
-    def __init__(self, info_set: base.InformationSet, incoming_edge=None, parent=None):
-        self.info_set = info_set.__copy__()
-        self.children = {}
-        self.incoming_edge = incoming_edge
-        self.parent = parent
-        self.visit_count = 0
-        self.total_rewards = 0
-
-    def unexplored_children(self, game_state: Game):
-        return [move for move in game_state.get_moves() if move not in self.children]
-
-    def select_child(self, game_state: Game, engine):
-        raise NotImplementedError
-
-    def traverse(self, game_state: Game, action):
-        raise NotImplementedError
-
-
-class OpponentNode(Node):
-    def __init__(self, info_set: base.InformationSet, incoming_edge=None, parent=None):
-        super().__init__(info_set, incoming_edge, parent)
-
-    @staticmethod
-    def new(parent: Node, edge):
-        move, move_result = edge
-        new_node = OpponentNode(parent.info_set, move, parent)
-        new_node.info_set.update_with_move(move_result)
-        return new_node
-
-    def unexplored_children(self, game_state: Game):
-        pass
-
-    def traverse(self, game_state: Game, action):
-        opponent_move_result = game_state.opponent_move_result()
-        edge = '_pass' if opponent_move_result is None else opponent_move_result
-        if edge not in self.children:
-            self.children[edge] = SelfNode.new(self, edge)
-        return self.children[edge]
-
-
-class SelfNode(Node):
-    @staticmethod
-    def new(parent: OpponentNode, incoming_edge=None):
-        return SelfNode(parent.info_set, incoming_edge, parent)
-
-    def select_child(self, game_state: Game, engine: base.SenseEngine):
-        sense_location = engine.choose_sense(self.info_set)
-        return sense_location
-
-    def traverse(self, game_state: Game, sense_location: chess.Square):
-        sense_result = game_state.handle_sense(sense_location)
-        edge = (sense_location, tuple(sense_result))
-        if edge not in self.children:
-            self.children[edge] = PlayNode.new(self, sense_location, sense_result)
-        return self.children[edge]
-
-
-class PlayNode(Node):
-    @staticmethod
-    def new(parent: SelfNode, sense_location, sense_result):
-        new_node = PlayNode(parent.info_set, incoming_edge=sense_location, parent=parent)
-        new_node.info_set.update_with_sense(sense_result)
-        return new_node
-
-    def select_child(self, game_state: Game, engine: base.SimulationEngine):
-        available_moves = game_state.get_moves()
-        move = available_moves[0]
-
-        # add some UCB calculation
-        return move
-
-    def traverse(self, game_state: Game, move):
-        move_result = game_state.handle_move(move)
-        edge = (move, move_result)
-        if edge not in self.children:
-            self.children[edge] = OpponentNode.new(self, edge)
-        return self.children[edge]
+eps = 1e-10
 
 
 class ISMCTSPolicyEngine(base.PolicyEngine):
-    def __init__(self, sense_engine: base.SenseEngine,
-                 eval_engine: base.SimulationEngine,
-                 info_set_type: Type[base.InformationSet],
-                 num_iterations: int,
-                 reset_info_set_on_determinization=True):
-        super().__init__(sense_engine, eval_engine)
-        initial_shape = (100, 64 * (7 * 8 + 8 + 9))
-        self.info_set_type = info_set_type
-        self.Q = np.zeros(initial_shape)
-        self.N = np.zeros(initial_shape)
-        self.P = np.zeros(initial_shape)
-        self.visited: List[Node] = []
+    def __init__(self, player_engine_spec: base.EngineSpec, opponent_engine_spec=None, white=True, num_iters=10):
+        super().__init__()
+        if opponent_engine_spec is None:
+            self.engine_specs = [player_engine_spec, player_engine_spec]
+        else:
+            self.engine_specs = [player_engine_spec, opponent_engine_spec]
         self.trees = []
-        self.num_iters = num_iterations
-        self.reset_info_set_on_determinization = reset_info_set_on_determinization
+        self.white = white
+        self.num_iters = num_iters
 
-    def generate_policy(self, player_info_set: base.InformationSet, other_info_set: base.InformationSet) -> np.ndarray:
-        # TODO: fix monte carlo call
-        return self.mcts(player_info_set, other_info_set)
+    def sense_engine(self, player):
+        return self.engine_specs[player].sense_engine
 
-    def ucb(self, move):
-        return 0
+    def sim_engine(self, player):
+        return self.engine_specs[player].sim_engine
+
+    def ucb_engine(self, player):
+        return self.engine_specs[player].ucb_engine
+
+    def generate_policy(self, player_info_set: base.InformationSet):
+        other_info_set = player_info_set.__copy__()
+        other_info_set.mirror()
+        self.mcts(player_info_set.__copy__(), other_info_set)
+        best_sense = max(self.trees[0].children.values(), key=lambda child: child.total_reward)
+        moves = sorted(best_sense.children.values(), key=lambda child: child.total_reward, reverse=True)
+
+        policy = np.zeros((8, 8, 73))
+        for node in moves:
+            node: base.OpponentNode
+            policy[move_to_feature_index(node.incoming_edge[1])] = node.total_reward
+        top_move = moves[0].incoming_edge[1]
+        out = feature_output_to_move(policy)
+        if out != top_move:
+            print(f'something went wrong, {out} when should be {top_move}')
+        return policy / policy.sum()
+
+    def get_turn(self, player):
+        if player == 0:
+            return self.white
+        else:
+            return not self.white
 
     def mcts(self, p1_info_set: base.InformationSet, p2_info_set: base.InformationSet):
         player = 0
-        self.trees = [SelfNode(p1_info_set), OpponentNode(p2_info_set)]
+        self.trees = [base.SelfNode(p1_info_set, chess.WHITE, incoming_edge=None, parent=None),
+                      base.OpponentNode(p2_info_set, chess.BLACK, incoming_edge=None, parent=None)]
 
-        for i in range(self.num_iters):
+        for i in tqdm(range(self.num_iters)):
             # perform initial determinization
             trees = self.trees.copy()
             determinization = p1_info_set.random_sample()
             trees, game_state = self.select(trees, player, determinization)
             if not game_state.is_over():
-                self.expand(trees, player, game_state)
-            rewards = self.simulate(trees)
+                self.expand(trees, game_state)
+            rewards = self.simulate(game_state)
             self.backprop(trees, rewards)
 
-        policy = sorted(self.trees[player].children, key=lambda child: child.total_rewards)
-        return map(lambda node: node.incoming_edge, policy)
+        # self.print_trees()
 
-    def backprop(self, trees: List[Node], rewards):
-        for player in range(len(trees)):
-            trees[player].visit_count += 1
-            trees[player].total_rewards += rewards[player]
-            trees[player] = trees[player].parent
+    def backprop(self, trees: List[base.Node], rewards):
+        trees = trees.copy()
+        rooted = 0
+        while rooted != len(trees):
+            rooted = 0
+            for player in range(len(trees)):
+                if trees[player] is None:
+                    continue
+                trees[player].visit_count += 1
+                trees[player].total_reward += rewards[player]
+                trees[player] = trees[player].parent
 
-    def simulate(self, game_state):
-        reward = self.eval_engine.score_boards([game_state])
-        return [reward, -reward]
+            for tree in trees:
+                rooted += 1 if tree is None else 0
 
-    def expand(self, trees: List[Node], player, game_state: Game):
+    def simulate(self, game_state: Game):
+        rewards = []
+        for player in range(len(self.trees)):
+            m = 1 if player == 0 else -1
+            rewards.append(m * self.sim_engine(player).score_boards([game_state.truth_board])[0] / 100)
+        return rewards
+
+    def expand(self, trees: List[base.Node], game_state: Game):
+        player = None
+        for i, tree in enumerate(trees):
+            if isinstance(tree, base.SelfNode):
+                player = i
+                break
+
         if game_state.is_over():
             return trees, game_state
 
-        sense_location = trees[player].select_child(game_state, self.sense_engine)
+        game_state.turn = self.get_turn(player)
+        sense_location = trees[player].select_child(game_state, self.sense_engine(player))
         trees[player] = trees[player].traverse(game_state, sense_location)
 
-        move_action = trees[player].select_child(game_state, self.eval_engine)
+        trees[player].expand(game_state)
+        move_action = trees[player].select_child(game_state, self.ucb_engine(player))
 
         for p in [player, not player]:
+            game_state.turn = self.get_turn(p)
             trees[p] = trees[p].traverse(game_state, move_action)
 
         return trees
 
-    def select(self, trees: List[Node], player, game_state: Game):
+    def select(self, trees: List[base.Node], player, game_state: Game):
         if game_state.is_over():
             return trees, game_state
         for tree in trees:
-            if len(tree.unexplored_children(game_state)) > 0:
+            if len(tree.unexplored_children(game_state, self.sense_engine(player))) > 0:
                 return trees, game_state
 
         # sense action
-        sense_action = trees[player].select_child(game_state, self.sense_engine)
+        sense_action = trees[player].select_child(game_state, self.sense_engine(player))
         trees[player] = trees[player].traverse(game_state, sense_action)
 
         # move action
-        move_action = trees[player].select_child(game_state, self.eval_engine)
+        move_action = trees[player].select_child(game_state, self.ucb_engine(player))
 
         # propagate player trees to the next state
         for p in [player, not player]:
+            game_state.turn = self.get_turn(p)
             trees[p] = trees[p].traverse(game_state, move_action)
         return self.select(trees, not player, game_state)
+
+    def print_trees(self):
+        names = ['Player', 'Opponent']
+        for i, tree in enumerate(self.trees):
+            print(f"{names[i]} Tree:")
+            print("-" * 30)
+            self.print_tree(tree)
+            print()
+
+    def print_tree(self, tree: base.Node, level=0):
+        if tree is None:
+            return
+        prepend = '\t' * level + "+---"
+        if tree.visit_count > 0:
+            print(prepend + str(tree))
+            for child in tree.children.values():
+                self.print_tree(child, level=level + 1)

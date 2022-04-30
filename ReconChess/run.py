@@ -1,7 +1,7 @@
 from util import Configuration
 from play_game import *
 
-ENV = Configuration('human_agent.py', [], 'random_agent.py', [], True, 1)
+ENV = Configuration('mcts_agent.py', [], 'mcts_agent.py', [], True, 1)
 
 wins = 0
 
@@ -27,7 +27,7 @@ for i in range(ENV.num_games):
             players.reverse()
             player_names.reverse()
 
-    win_color, win_reason = play_local_game(players[0], players[1], player_names, verbose=False)
+    win_color, win_reason = play_local_game(players[0], players[1], player_names, verbose=ENV.verbose)
     if win_color == chess.WHITE:
         wins += 1
     print('Game Over!')

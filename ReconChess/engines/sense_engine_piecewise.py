@@ -2,13 +2,14 @@ import engines.base as base
 import chess
 from abc import abstractmethod
 
+from engines import PiecewiseInformationSet
+
 
 class PiecewiseSenseEngine(base.SenseEngine):
-    @abstractmethod
-    def choose_sense(self, board: base.InformationSet) -> chess.Square:
+    def choose_sense(self, board: PiecewiseInformationSet) -> chess.Square:
         """
         evaluates all sensing options given a board
         :param board: information set
         :return: returns the chosen square
         """
-        return 0
+        return board.piecewisegrid.choose_sense()

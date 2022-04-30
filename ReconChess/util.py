@@ -1,8 +1,32 @@
 import chess
 from collections import namedtuple
+import treelib as tl
 
 Configuration = namedtuple('Config', 'white, white_args, black, black_args, verbose, num_games')
 
+
+def mirror(sq: chess.Square):
+    if sq is None:
+        return sq
+    rank = 7 - chess.square_rank(sq)
+    file = 7 - chess.square_file(sq)
+    return chess.square(file, rank)
+
+
+def flip_move(move: chess.Move):
+    if move is None:
+        return move
+    return chess.Move(mirror(move.from_square), mirror(move.to_square))
+
+def mirror_sense_result(sense_result):
+    new_results = []
+    for result in sense_result:
+        sq, p = result
+        sq = mirror(sq)
+        if p is not None:
+            p.color = not p.color
+        new_results.append((sq, p))
+    return new_results
 
 def format_print_board(board, force_verbose=False):
     if not ENV.verbose and not force_verbose:
