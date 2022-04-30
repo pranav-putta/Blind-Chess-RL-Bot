@@ -27,7 +27,8 @@ class StockFishEvaluationEngine(base.SimulationEngine):
                     #score = self.engine.analyse(board, chess.engine.Limit(depth=20))['score'].relative.cp
                     break
                 except AttributeError as ae:
-                    print("DEBUG HERE")
+                    score = 100000
+                    print("Mate found")
                 except chess.engine.EngineError:
                     print("ENGINE ERROR WHEN ATTEMPTING TO SCORE BOARD")
                     print("The problematic board is: ")
@@ -35,6 +36,7 @@ class StockFishEvaluationEngine(base.SimulationEngine):
                     self.restart_engine()
                 except Exception as e:
                     print("ok what the flip")
+                    print(e)
             arr.append(score)
         return np.array(arr)
 
@@ -42,31 +44,33 @@ class StockFishEvaluationEngine(base.SimulationEngine):
         moves = []
         for board in boards:
             enemy_king_square = board.king(not color)
+            found_king_attack = False
             if enemy_king_square:
                 # if there are any ally pieces that can take king, execute one of those moves
                 enemy_king_attackers = board.attackers(color, enemy_king_square)
                 if enemy_king_attackers:
                     attacker_square = enemy_king_attackers.pop()
                     moves.append(chess.Move(attacker_square, enemy_king_square))
+                    found_king_attack = True
 
             # otherwise, try to move with the stockfish chess engine
+            if not found_king_attack:
+                try:
+                    board.turn = color
+                    board.clear_stack()
 
-            try:
-                board.turn = color
-                board.clear_stack()
-
-                result = self.engine.play(board, chess.engine.Limit(time=0.05))
-                moves.append(result.move)
-                continue
-            except chess.engine.EngineTerminatedError:
-                print("ENGINE TERMINATED ERROR")
-                print("The board that caused this looks like:")
-                print(board)
-                exit()
-                self.restart_engine()
-            except chess.engine.EngineError:
-                print('Stockfish Engine bad state at "{}"'.format(board.fen()))
-                util.format_print_board(board)
+                    result = self.engine.play(board, chess.engine.Limit(time=0.05))
+                    moves.append(result.move)
+                    continue
+                except chess.engine.EngineTerminatedError:
+                    print("ENGINE TERMINATED ERROR")
+                    print("The board that caused this looks like:")
+                    print(board)
+                    #exit()
+                    self.restart_engine()
+                except chess.engine.EngineError:
+                    print('Stockfish Engine bad state at "{}"'.format(board.fen()))
+                    util.format_print_board(board)
 
             # if all else fails, pass
             moves.append(None)

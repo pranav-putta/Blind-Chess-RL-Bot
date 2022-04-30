@@ -32,6 +32,7 @@ class PiecewiseGrid:
         self.captured_list = [None] * 32
         self.promoted = [False] * 32
         self.enemy_moves = []
+        self.enemy_pawn_columns = [ [i] for i in range(8) ] # possible columns the enemy's pawns could be in
 
         for i in range(32):
             piece = chess.Piece.from_symbol(self.piece_types[i])
@@ -87,6 +88,11 @@ class PiecewiseGrid:
         if captured_piece: # TODO: Fix this, something here is not quite working
             file = chess.square_file(captured_square)
             rank = chess.square_rank(captured_square)
+
+            # consider possibility, no matter how small, that an enemy pawn captured the piece
+            for column in self.enemy_pawn_columns:
+                if file - 1 in column or file + 1 in column and not file in column:
+                    column.append(file)
 
             piece_chances = np.array([0.0] * 32)
             board = self.gen_certain_board()
@@ -297,7 +303,7 @@ class PiecewiseGrid:
             self.piece_grids = self.piece_grids_temp
 
             if len(self.enemy_moves) == 0: # We literally have no clue what move the enemy could have made
-                print("WE SHOULD NOT BE HERE")
+                print("The bot has no idea what move the enemy made")
             else:
                 # renormalize move probabilities
                 moves, piece_types, chances = zip(*self.enemy_moves)
@@ -322,13 +328,10 @@ class PiecewiseGrid:
             if loc[1] != None:
                 max = -1.0
                 piece_index = 0
+
                 for i in range(16):
-                    #print(self.piece_types[i])
-                    #print(loc[1])
-                    #print(self.piece_grids[rank, file, i])
-                    #print(max)
-                    #print(not handled[i])
-                    if self.piece_types[i] == loc[1].symbol() and self.piece_grids[rank, file, i] > max and not handled[i]:
+                    if self.piece_types[i] == loc[1].symbol() and self.piece_grids[rank, file, i] > max and not handled[i] \
+                            and (not loc[1].symbol() == 'p' or file in self.enemy_pawn_columns[i - 8]):
                         max = self.piece_grids[rank, file, i]
                         piece_index = i
 
@@ -384,8 +387,7 @@ class PiecewiseGrid:
 
     def gen_board(self):
         spaces = []
-        board = chess.Board()
-        board.set_piece_map({})
+        piece_map = {}
 
         for i in order:
             # transposing from numpy format to board format begins here
@@ -399,15 +401,16 @@ class PiecewiseGrid:
             if np.sum(piece_grid) < 0.001:
                 print("Oh no, no where to place this piece")
                 print(piece_grid_copy)
-                print(board)
+                print(chess.Board(piece_map))
             piece_grid /= np.sum(piece_grid)
 
             num = np.random.choice(64, 1, p=piece_grid)[0]
             # and ends here when flattened index is reinterpreted as board index
-            board.set_piece_at(num, chess.Piece.from_symbol(self.piece_types[i]))
+            piece_map[num] = chess.Piece.from_symbol(self.piece_types[i])
 
             spaces.append(num)
 
+        board = chess.Board(piece_map)
         return board
 
     def num_board_states(self) -> int:

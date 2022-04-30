@@ -4,6 +4,7 @@ from engines.eval_engine_stockfish import StockFishEvaluationEngine
 from prob_board import PiecewiseGrid
 
 import os
+import random
 
 import numpy as np
 from player import Player
@@ -42,7 +43,10 @@ class LaSalleAgent(Player):
             self.firstmove = False
             return
 
-        num_samples = 50
+        stockfish_vs_random = 0.8
+
+        #num_samples = 50
+        num_samples = self.piecewisegrid.num_board_states() + 1
         samples = []
         for sample in range(num_samples):
             board = self.piecewisegrid.gen_board().mirror()
@@ -56,13 +60,24 @@ class LaSalleAgent(Player):
             move.from_square = chess.square(chess.square_file(move.from_square), 7 - chess.square_rank(move.from_square))
             move.to_square = chess.square(chess.square_file(move.to_square), 7 - chess.square_rank(move.to_square))
             samples[i] = samples[i].mirror()
+        chances = [stockfish_vs_random / len(moves) for move in moves]
+        piece_types = [board.piece_at(move.from_square).piece_type for board, move in zip(samples, moves)]
+
+        random_moves = []
+        for board in samples:
+            for i in range(5):
+                random_moves.append(random.choice(list(board.pseudo_legal_moves)))
+
+        random_chances = [(1 - stockfish_vs_random) / len(random_moves) for move in random_moves]
+        random_piece_types = [board.piece_at(move.from_square).piece_type for board, move in zip(samples, random_moves)]
+
+        moves += random_moves
+        chances += random_chances
+        piece_types += random_piece_types
 
         print("OPPONENT MOVES: ")
         print(moves)
         print(self.piecewisegrid.gen_board())
-        #print(self.piecewisegrid.gen_certain_board())
-        chances = [1.0 / len(moves) for move in moves]
-        piece_types = [board.piece_at(move.from_square).piece_type for board, move in zip(samples, moves)]
 
         self.piecewisegrid.handle_enemy_move(list(zip(moves, piece_types, chances)), captured_piece, captured_square)
 
