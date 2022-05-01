@@ -14,8 +14,8 @@ class StockFishBasicEvaluationEngine(base.SimulationEngine):
     engine: chess.engine.SimpleEngine
 
     def __init__(self, depth=10, color=chess.WHITE):
-        self.model = stockfish_nn_train.BasicNet()
-        self.model.load_state_dict(torch.load('chess.pth'))
+        self.model = stockfish_nn_train.Net()
+        self.model.load_state_dict(torch.load('chess.pth',map_location=torch.device('cpu')))
         self.depth = depth
         self.color = color
 

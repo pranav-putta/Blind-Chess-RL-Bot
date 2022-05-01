@@ -63,6 +63,7 @@ class Net(nn.Module):
         self.fc3 = torch.nn.Linear(128, 1, bias=True)
 
     def forward(self, x):
+        x = torch.tensor(x[None,]).float()
         out = self.layer1(x)
         out = self.layer2(out)
         out = self.layer3(out)

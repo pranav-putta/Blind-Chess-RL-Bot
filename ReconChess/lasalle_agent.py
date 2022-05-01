@@ -160,7 +160,6 @@ class LaSalleAgent(Player):
         self.piecewisegrid.handle_sense_result(sense_result)
         print(self.piecewisegrid.gen_board())
 
-
     def sq_dist(self, a: chess.Square, b: chess.Square):
         ax, ay = chess.square_file(a), chess.square_rank(a)
         bx, by = chess.square_file(b), chess.square_rank(b)
@@ -188,14 +187,14 @@ class LaSalleAgent(Player):
                     move = flip_move(move)
                 return move
 
-        board = self.piecewisegrid.gen_board()
-        for piece_type in [chess.KNIGHT, chess.QUEEN, chess.BISHOP, chess.ROOK]:
-            for enemy_piece in board.pieces(piece_type, chess.BLACK):
-                attackers = board.attackers(chess.WHITE, enemy_piece)
-                if attackers:
+        for i in range(self.piecewisegrid.num_board_states()):
+            board = self.piecewisegrid.gen_board()
+            for piece_type in [chess.KNIGHT, chess.QUEEN, chess.BISHOP, chess.ROOK]:
+                for enemy_square in board.pieces(piece_type, chess.BLACK):
+                    attackers = board.attackers(chess.WHITE, enemy_square)
                     for attacker_sq in attackers:
-                        if self.sq_dist(chess.D2, enemy_piece) < 3 or piece_type == chess.KNIGHT:
-                            move = chess.Move(attacker_sq, enemy_piece)
+                        if self.sq_dist(chess.D2, enemy_square) < 3 or piece_type == chess.KNIGHT:
+                            move = chess.Move(attacker_sq, enemy_square)
                             if self.color == chess.BLACK:
                                 move = flip_move(move)
                             return move
