@@ -6,7 +6,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Any, Dict
 from enum import Enum
-from engines.game import Game
+from game import Game
 from collections import namedtuple
 from util import flip_move, mirror, mirror_sense_result
 
@@ -130,7 +130,7 @@ class Node:
     def traverse(self, game_state: Game, action, engine):
         raise NotImplementedError
 
-    def expand(self, game_state: Game, engine):
+    def expand(self, game_state: Game, engine_spec: EngineSpec):
         raise NotImplementedError
 
     @property
@@ -154,7 +154,7 @@ class OpponentNode(Node):
         super().__init__(info_set, player, incoming_edge, parent)
 
     @staticmethod
-    def new(parent: Node, edge, engine):
+    def new(parent: Node, edge, engine: EngineSpec):
         req_move, move, captured_square = edge
         captured_piece = captured_square is not None
 
@@ -162,58 +162,10 @@ class OpponentNode(Node):
         if move is not None:
             # TODO; make sure this is correct
             new_node.info_set.update_with_move((move, captured_piece))
-        # board = new_node.info_set.random_sample()
-        # board.turn = not board.turn
-        """
-        possible_moves = board.get_moves()
-        possible_opponent_moves = []
-        for move in possible_moves:
-            possible_opponent_moves.append((move, captured_square, 1 / len(possible_moves)))
-        """
-        # TODO; add possible moves
-        # if self.firstmove:
-        #    self.firstmove = False
-        #   return
-
-        stockfish_vs_random = 0.9
-
-        # num_samples = 50
-        """
-        num_samples = new_node.info_set.size() + 1
-        samples = []
-        for sample in range(num_samples):
-            board = new_node.info_set.random_sample().truth_board.mirror()
-            board.color = chess.BLACK
-            samples.append(board)
-
-        moves = engine.best_moves(samples)
-        moves = [move for move in moves if not move is None]
-        random_moves = []
-        piece_types = []
-        random_piece_types = []
-        # mirrors move to opponent's side
-        for i in range(len(moves)):
-            move = moves[i]
-            piece_types.append(samples[i].piece_at(move.from_square).piece_type)
-            move.from_square = chess.square_mirror(move.from_square)
-            move.to_square = chess.square_mirror(move.to_square)
-            # move.from_square = chess.square(chess.square_file(move.from_square), 7 - chess.square_rank(move.from_square))
-            # move.to_square = chess.square(chess.square_file(move.to_square), 7 - chess.square_rank(move.to_square))
-
-            for j in range(10):
-                random_moves.append(random.choice(list(samples[i].pseudo_legal_moves)))
-                random_piece_types.append(samples[i].piece_at(random_moves[-1].from_square).piece_type)
-
-            samples[i] = samples[i].mirror()
-
-        chances = [stockfish_vs_random / len(moves) for move in moves]
-        random_chances = [(1 - stockfish_vs_random) / len(random_moves) for move in random_moves]
-        moves += random_moves
-        chances += random_chances
-        piece_types += random_piece_types
-        new_node.info_set.propagate_opponent_move(list(zip(moves, piece_types, chances)), captured_square,
-                                                  captured_piece)
-                                                          """
+        num_samples = 1
+        samples = [new_node.info_set.random_sample().truth_board for i in range(num_samples)]
+        avg_score = np.sum(engine.sim_engine.score_boards(samples)) / num_samples / 100
+        new_node.total_reward = avg_score
         new_node.info_set.propagate_opponent_move([], captured_square,
                                                   captured_piece)
         return new_node
@@ -283,21 +235,21 @@ class PlayNode(Node):
         new_node.info_set.update_with_sense(sense_result)
         return new_node
 
-    def expand(self, game_state: Game, engine):
+    def expand(self, game_state: Game, engine_spec: EngineSpec):
         moves = game_state.get_moves()
         for move in moves:
             # game state expects non-mirrored moves
             move_result = game_state.handle_move(move)
             if move_result[1] is None:  # illegal move happened, like moving pawn to the left/right and nothing there
-                game_state.pop_move()
+                game_state.truth_board.pop()
                 continue
             edge = move_result[0:3]
             if self.player == chess.BLACK:
                 edge = flip_move(edge[0]), flip_move(edge[1]), mirror(edge[2])
             key = edge[1]
             if key not in self.children:
-                self.children[key] = OpponentNode.new(self, edge, engine)
-            game_state.pop_move()
+                self.children[key] = OpponentNode.new(self, edge, engine_spec)
+            game_state.truth_board.pop()
 
     def select_child(self, game_state: Game, engine: UCBEngine):
         available_moves = game_state.get_moves()
@@ -331,7 +283,7 @@ class PlayNode(Node):
         edge = move_result[0:3]
         if self.player == chess.BLACK:
             edge = flip_move(edge[0]), flip_move(edge[1]), mirror(edge[2])
-        key = move_result[1]
+        key = edge[1]
         if key not in self.children:
             self.children[key] = OpponentNode.new(self, edge, engine)
         return self.children[key]

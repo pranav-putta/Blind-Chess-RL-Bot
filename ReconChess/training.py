@@ -3,7 +3,7 @@ import torch.utils.data
 from torch import optim
 
 from engines import StockFishNNEvalEngine, RandomSenseEngine
-from engines.game import Game
+from game import Game
 from mcts_agent import MCTSAgent
 from copy import copy
 from engines import Net
@@ -12,7 +12,7 @@ import multiprocessing as mp
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 
-MAX_MOVES = 35
+MAX_MOVES = 100
 
 
 def pit(n, newnet, oldnet):
@@ -48,7 +48,9 @@ def play_game(white_player: MCTSAgent, black_player: MCTSAgent):
     game.start()
 
     move_number = 1
+    turn = chess.WHITE
     while not game.is_over() and move_number < MAX_MOVES:
+        game.turn = turn
         print('WHITE TURN' if game.turn == chess.WHITE else 'BLACK TURN')
         policy, requested_move, taken_move = play_turn(game, players[game.turn])
         if game.turn == chess.BLACK:
@@ -60,6 +62,7 @@ def play_game(white_player: MCTSAgent, black_player: MCTSAgent):
         print("TRUE BOARD")
         print(game.truth_board)
         move_number += 1
+        turn = not turn
 
     if game.is_over():
         winner_color, winner_reason = game.get_winner()
@@ -98,8 +101,9 @@ def play_turn(game, player):
     policy, move = player.choose_move(possible_moves, game.get_seconds_left())
 
     try:
-        print(f"Move: {move}")
         requested_move, taken_move, captured_square, reason = game.handle_move(move)
+        print(f"Move: {requested_move}, Taken_Move: {taken_move}, Captured_Square: {captured_square}, Color: {game.turn}")
+
     except Exception as e:
         print(e)
         requested_move, taken_move, captured_square, reason = move, None, None, None
@@ -195,8 +199,13 @@ net = Net()
 
 
 def self_play(n):
-    self_play_games(1, net, name=f'example{n}.pkl')
+    self_play_games(1, net, name=f'examples/example{n}.pkl')
 
 
-samples = pickle.load(open('example1.pkl', 'rb'))
-train(net, samples)
+#samples = pickle.load(open('example1.pkl', 'rb'))
+#train(net, samples)
+
+
+if __name__ == '__main__':
+    pool = mp.Pool(20)
+    pool.map(self_play, range(3))

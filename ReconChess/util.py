@@ -1,6 +1,5 @@
 import chess
 from collections import namedtuple
-import treelib as tl
 
 Configuration = namedtuple('Config', 'white, white_args, black, black_args, verbose, num_games')
 

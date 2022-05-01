@@ -19,7 +19,8 @@ class Net(nn.Module):
         self.fc_out_policy = nn.Linear(104, 4672)
 
     def forward(self, x):
-        x = torch.tensor(x.flatten().reshape(10, -1), dtype=torch.float)
+        batch = x.shape[0]
+        x = torch.tensor(x.flatten().reshape(batch, -1), dtype=torch.float)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
@@ -100,7 +101,7 @@ class NetworkPolySimEngine(SimulationEngine, PolicyEngine):
         return 0
 
     def generate_policy(self, self_info_set: InformationSet):
-        score, policy = self.net(self_info_set.raw)
+        score, policy = self.net(self_info_set.raw[None,:])
         return policy.reshape(8, 8, 73)
 
     def prob_given_action(self, policy, move):

@@ -5,7 +5,7 @@ import numpy as np
 from typing import List
 import util
 
-STOCKFISH_PATH = '/usr/local/Cellar/stockfish/14.1/bin/stockfish'
+STOCKFISH_PATH = 'C:\\Users\\pputta7\\Downloads\\stockfish\\stockfish_15_x64_popcnt.exe'
 EVAL_TIME_LIMIT = 0.05
 
 
@@ -52,7 +52,7 @@ class StockFishEvaluationEngine(base.SimulationEngine):
                 # score = self.engine.analyse(board, chess.engine.Limit(depth=20))['score'].relative.cp
             except AttributeError as ae:
                 score = 100000
-                print("Mate found")
+                #print("Mate found")
             except chess.engine.EngineError as e:
                 print("ENGINE ERROR WHEN ATTEMPTING TO SCORE BOARD")
                 print(board.fen())

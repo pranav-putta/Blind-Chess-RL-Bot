@@ -37,10 +37,10 @@ class MCTSAgent(Player):
         :param board: chess.Board -- initial board state
         """
         sense_engine = PiecewiseSenseEngine()
-        sim_engine = StockFishEvaluationEngine(depth=5)
+        sim_engine = StockFishEvaluationEngine(depth=1)
         network_policy_engine = NetworkPolySimEngine(self.network)
         ucb_engine = PolicyNetworkUCB(network_policy_engine)
-        ucb_engine = ExpUCB()
+        #ucb_engine = ExpUCB()
         self.engine_spec = base.EngineSpec(sense_engine, sim_engine, ucb_engine)
         self.policy_engine = ISMCTSPolicyEngine(self.engine_spec, num_iters=100)
         if color == chess.BLACK:
@@ -65,7 +65,7 @@ class MCTSAgent(Player):
         # if self.firstmove:
         #    self.firstmove = False
         #   return
-
+        """
         stockfish_vs_random = 0.9
 
         # num_samples = 50
@@ -111,7 +111,8 @@ class MCTSAgent(Player):
         piece_types += random_piece_types
 
         self.info_set.propagate_opponent_move(list(zip(moves, piece_types, chances)), captured_piece, captured_square)
-
+        """
+        self.info_set.propagate_opponent_move([], captured_piece, captured_square)
     def choose_sense(self, possible_sense, possible_moves, seconds_left):
         """
         This function is called to choose a square to perform a sense on.
