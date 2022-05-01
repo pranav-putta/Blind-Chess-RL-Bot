@@ -15,7 +15,6 @@ import chess.engine
 import os
 import util
 from player import Player
-import stockfish_nn
 import torch
 
 STOCKFISH_PATH = '/usr/local/Cellar/stockfish/14.1/bin/stockfish'

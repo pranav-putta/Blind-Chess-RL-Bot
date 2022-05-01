@@ -15,7 +15,7 @@ def mirror(sq: chess.Square):
 def flip_move(move: chess.Move):
     if move is None:
         return move
-    return chess.Move(mirror(move.from_square), mirror(move.to_square))
+    return chess.Move(int(mirror(move.from_square)), int(mirror(move.to_square)))
 
 def mirror_sense_result(sense_result):
     new_results = []
@@ -26,9 +26,9 @@ def mirror_sense_result(sense_result):
             p.color = not p.color
         new_results.append((sq, p))
     return new_results
-
+verbose = False
 def format_print_board(board, force_verbose=False):
-    if not ENV.verbose and not force_verbose:
+    if verbose and not force_verbose:
         return
     rows = ['8', '7', '6', '5', '4', '3', '2', '1']
     fen = board.board_fen()

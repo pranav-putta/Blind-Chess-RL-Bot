@@ -17,9 +17,9 @@ import chess
 
 from engines import ISMCTSPolicyEngine, PiecewiseSenseEngine, StockFishEvaluationEngine, PiecewiseInformationSet, \
     ExpUCB, NetworkPolySimEngine, PolicyNetworkUCB, StaticSenseEngine
-from engines.game import Game
-import engines.base as base
-from engines.eval_engine_network import feature_output_to_move
+from game import Game
+import base as base
+from eval_engine_network import feature_output_to_move
 from util import flip_move, mirror, mirror_sense_result
 
 

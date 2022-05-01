@@ -6,9 +6,33 @@ from torch import nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset
 import numpy as np
-from engines.eval_engine_stockfish_nn import SparseBatch
+from eval_engine_stockfish_nn import SparseBatch
 import pandas as pd
 import torch.optim as optim
+
+
+class BasicNet(nn.Module):
+
+    def __init__(self):
+        super().__init__()
+        self.fc1 = nn.Linear(832, 832)
+        self.fc2 = nn.Linear(832, 416)
+        self.fc3 = nn.Linear(416, 208)
+        self.fc4 = nn.Linear(208, 104)
+        self.fc5 = nn.Linear(104, 104)
+        self.fc6 = nn.Linear(104, 104)
+        self.fc7 = nn.Linear(104, 104)
+        self.fc8 = nn.Linear(104, 1)
+
+    def forward(self, x):
+        x = torch.tensor(x).float()
+        x = torch.flatten(x)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = F.relu(self.fc4(x))
+        x = self.fc5(x)
+        return x
 
 
 class Net(nn.Module):
@@ -30,7 +54,7 @@ class Net(nn.Module):
             torch.nn.ReLU(),
             torch.nn.MaxPool2d(kernel_size=3, stride=1),
             torch.nn.Dropout(p=0.2))
-        self.fc1 = torch.nn.Linear(4*4*128, 512, bias=True)
+        self.fc1 = torch.nn.Linear(4 * 4 * 128, 512, bias=True)
         self.layer4 = torch.nn.Sequential(
             self.fc1,
             torch.nn.ReLU(),
@@ -146,6 +170,8 @@ def fen_to_bit_vector(fen):
                 break
 
     return bit_vector
+
+
 def eval_to_int(evaluation):
     try:
         res = int(evaluation)
@@ -231,5 +257,3 @@ def AdamW_main():
             if count % 10000 == 0:
                 print('Average error of the model on the {} tactics positions is {}'.format(count, loss / count))
     # print('Average error of the model on the {} tactics positions is {}'.format(count, loss/count))
-
-AdamW_main()

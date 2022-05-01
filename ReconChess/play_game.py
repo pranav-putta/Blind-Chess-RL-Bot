@@ -241,7 +241,7 @@ if __name__ == '__main__':
                 players.reverse()
                 player_names.reverse()
 
-        win_color, win_reason = play_local_game(players[0], players[1], player_names, verbose=False)
+        win_color, win_reason = play_local_game(players[0], players[1], player_names, verbose=True)
         if win_color == chess.WHITE:
             wins += 1
         print('Game Over!')

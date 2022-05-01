@@ -1,4 +1,7 @@
 import unittest
+
+import numpy as np
+
 from engines import PiecewiseInformationSet, Game
 import chess
 from engines import move_to_feature_index, feature_output_to_move, create_policy_from_move
@@ -21,6 +24,35 @@ class InfoSetTestCases(unittest.TestCase):
 
 
 class EncoderTestCases(unittest.TestCase):
+    def test_a1h7_again(self):
+        policy = np.zeros((8, 8, 73))
+        for i in range(8):
+            for j in range(8):
+                for k in range(73):
+                    policy[i, j, k] = 1
+                    try:
+                        out = feature_output_to_move(policy)
+                        if out.from_square == chess.A1 and out.to_square == chess.H7:
+                            print('wtf')
+                            assert False
+                    except:
+                        pass
+
+                    policy[i, j, k] = 0
+
+    def test_a1h7(self):
+        for sq1 in range(0, 64):
+            for sq2 in range(0, 64):
+                move = chess.Move(sq1, sq2)
+                try:
+                    encoding = create_policy_from_move(move)
+                    decoding = feature_output_to_move(encoding)
+                    if decoding.from_square == chess.A1 and decoding.to_square == chess.H7:
+                        print('wtf')
+
+                except:
+                    pass
+
     def test_all(self):
         board = chess.Board()
         board.set_piece_map({})
