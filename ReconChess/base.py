@@ -14,6 +14,11 @@ eps = 1e-3
 EngineSpec = namedtuple('Engine', ['sense_engine', 'sim_engine', 'ucb_engine'])
 
 
+def purify(sq: chess.Square):
+    rank, file = chess.square_rank(sq), chess.square_file(sq)
+    return chess.square(int(file), int(rank))
+
+
 class UCBEngine(ABC):
     def __init__(self):
         pass
@@ -196,7 +201,7 @@ class SelfNode(Node):
     def unexplored_children(self, game_state: Game, engine: SenseEngine):
         sense_location = engine.choose_sense(self.info_set)
         if self.player == chess.BLACK:
-             sense_result = game_state.handle_sense(mirror(sense_location))
+            sense_result = game_state.handle_sense(mirror(sense_location))
         else:
             sense_result = game_state.handle_sense(sense_location)
 

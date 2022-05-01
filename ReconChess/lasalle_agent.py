@@ -3,7 +3,7 @@ from collections import defaultdict
 
 import chess
 
-from base import EngineSpec
+from base import EngineSpec, purify
 from eval_engine_stockfish import StockFishEvaluationEngine
 from eval_engine_stockfish_bnn import StockFishBasicEvaluationEngine
 from game import Game
@@ -140,7 +140,7 @@ class LaSalleAgent(Player):
         print(chess.square_name(square))
         if self.color == chess.BLACK:
             square = mirror(square)
-        return square
+        return purify(square)
 
     def handle_sense_result(self, sense_result):
         """
@@ -193,10 +193,11 @@ class LaSalleAgent(Player):
                 for enemy_square in board.pieces(piece_type, chess.BLACK):
                     attackers = board.attackers(chess.WHITE, enemy_square)
                     for attacker_sq in attackers:
-                        if self.sq_dist(chess.D2, enemy_square) < 3 or piece_type == chess.KNIGHT:
+                        if self.sq_dist(chess.D2, enemy_square) < 3:
                             move = chess.Move(attacker_sq, enemy_square)
                             if self.color == chess.BLACK:
                                 move = flip_move(move)
+                            print(f'req move: {move}')
                             return move
 
         # change this to depend on total uncertainty
@@ -279,7 +280,7 @@ class LaSalleAgent(Player):
         if self.color == chess.BLACK:
             move = flip_move(move)
         print(f"req move: {move}")
-
+        move = chess.Move(purify(move.from_square), purify(move.to_square))
         return move
 
     def handle_move_result(self, requested_move, taken_move, reason, captured_piece, captured_square):
