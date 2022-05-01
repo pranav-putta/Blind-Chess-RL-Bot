@@ -109,27 +109,27 @@ class SparseBatch:
             self.fill_board(board, i)
 
     def get_tensors(self):
-        device = torch.device('cuda')
-        white_values = torch.from_numpy(self.white_values).pin_memory().to(device=device, non_blocking=True).to(
+        device = torch.device('cpu')
+        white_values = torch.from_numpy(self.white_values).to(device=device, non_blocking=True).to(
             torch.float32)
-        black_values = torch.from_numpy(self.black_values).pin_memory().to(device=device, non_blocking=True).to(
+        black_values = torch.from_numpy(self.black_values).to(device=device, non_blocking=True).to(
             torch.float32)
-        white_indices = torch.from_numpy(self.white).pin_memory().to(device=device, non_blocking=True).to(torch.int32)
-        black_indices = torch.from_numpy(self.black).pin_memory().to(device=device, non_blocking=True).to(torch.int32)
-        us = torch.from_numpy(np.ctypeslib.as_array(self.is_white, shape=(self.size, 1))).pin_memory().to(device=device,
+        white_indices = torch.from_numpy(self.white).to(device=device, non_blocking=True).to(torch.int32)
+        black_indices = torch.from_numpy(self.black).to(device=device, non_blocking=True).to(torch.int32)
+        us = torch.from_numpy(np.ctypeslib.as_array(self.is_white, shape=(self.size, 1))).to(device=device,
                                                                                                           non_blocking=True).to(
             torch.float32)
         them = 1.0 - us
 
         psqt_indices = torch.from_numpy(
-            np.ctypeslib.as_array(self.psqt_indices, shape=(self.size,))).long().pin_memory().to(device=device,
+            np.ctypeslib.as_array(self.psqt_indices, shape=(self.size,))).long().to(device=device,
                                                                                                  non_blocking=True).to(
             torch.int64)
         layer_stack_indices = torch.from_numpy(
-            np.ctypeslib.as_array(self.layer_stack_indices, shape=(self.size,))).long().pin_memory().to(device=device,
+            np.ctypeslib.as_array(self.layer_stack_indices, shape=(self.size,))).long().to(device=device,
                                                                                                         non_blocking=True).to(
             torch.int64)
-        return us, them, white_indices, white_values, black_indices, black_values, psqt_indices, layer_stack_indices
+        return white_indices, white_values, black_indices, black_values
 
 
 def evaluate(boards: List[chess.Board], model=None):

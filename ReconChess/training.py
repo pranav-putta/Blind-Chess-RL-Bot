@@ -199,7 +199,7 @@ net = Net()
 
 
 def self_play(n):
-    self_play_games(1, net, name=f'examples/example{n}.pkl')
+    self_play_games(3, net, name=f'examples/example{n}.pkl')
 
 
 #samples = pickle.load(open('example1.pkl', 'rb'))
@@ -207,5 +207,5 @@ def self_play(n):
 
 
 if __name__ == '__main__':
-    pool = mp.Pool(20)
-    pool.map(self_play, range(3))
+    pool = mp.Pool(48)
+    pool.map(self_play, range(48))

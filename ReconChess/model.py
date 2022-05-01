@@ -2,7 +2,7 @@ import ranger
 import torch
 from torch import nn
 import torch.nn.functional as F
-import pytorch_lightning as pl
+#import pytorch_lightning as pl
 import copy
 from feature_transformer import DoubleFeatureTransformerSlice
 
