@@ -2,7 +2,7 @@ import chess
 from collections import namedtuple
 
 Configuration = namedtuple('Config', 'white, white_args, black, black_args, verbose, num_games')
-ENV = Configuration('lasalle_agent.py', [], 'naive_stockfish_agent.py', [], True, 50)
+ENV = Configuration('knight_agent.py', [], 'naive_stockfish_agent.py', [], True, 5)
 
 
 def format_print_board(board, force_verbose=False):

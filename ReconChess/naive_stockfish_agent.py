@@ -125,7 +125,7 @@ class StockfishAgent2(Player):
 
             # if we see a piece that we didn't know was on the board, randomly remove extra piece, and set the
             # observed piece
-            squares = list(self.board.piece_types(piece.piece_type, piece.color))
+            squares = list(self.board.pieces(piece.piece_type, piece.color))
             if len(squares) > 0:
                 remove_square = random.choice(squares)
                 self.naive_replace_piece(remove_square, None)
@@ -183,7 +183,7 @@ class StockfishAgent2(Player):
             self.board.turn = self.color
             self.board.clear_stack()
 
-            if len(self.board.piece_types(chess.KING, not self.color)) == 0:
+            if len(self.board.pieces(chess.KING, not self.color)) == 0:
                 # this was an L, tried to attack the king and it wasn't there! Relocate it to a new location.
                 print('relocating the king')
                 self.relocate_king(enemy_king_square)

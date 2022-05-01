@@ -4,6 +4,7 @@ import chess
 import numpy as np
 
 import random
+import math
 
 # to convolve uncertainties
 from scipy import signal
@@ -253,7 +254,7 @@ class PiecewiseGrid:
             y = rank + dir[1]
             if x < 8 and y < 8 and x >= 0 and y >= 0 and board.piece_at(chess.square(x,y)) == None:
                 try:
-                    uncertainty[y, x, knights] += KING_ATTACK
+                    uncertainty[y, x, knights] += 3 * KING_ATTACK
                 except IndexError as ie:
                     print("ERROR WHEN TRYING TO INDEX KNIGHTS")
                     print(knights)
@@ -500,7 +501,7 @@ class PiecewiseGrid:
         piece_grids_copy = self.piece_grids.copy()
         piece_grids_copy[piece_grids_copy == 0] = 1.0 # entropy is zero when probability is zero or one, but log breaks with zero
 
-        entropy = -np.sum(piece_grids_copy * np.log(piece_grids_copy))
+        entropy = -np.sum(piece_grids_copy * np.log2(piece_grids_copy))
         entropy = 2 ** entropy
 
-        return int(entropy)
+        return math.ceil(entropy)

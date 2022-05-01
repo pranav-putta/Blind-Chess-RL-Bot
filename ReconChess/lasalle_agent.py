@@ -47,7 +47,7 @@ class LaSalleAgent(Player):
 
         #num_samples = 50
         num_samples = self.piecewisegrid.num_board_states() + 1
-        print("NUM SAMPLES: " + str(num_samples))
+        #print("NUM SAMPLES: " + str(num_samples))
         samples = []
         for sample in range(num_samples):
             board = self.piecewisegrid.gen_board().mirror()
@@ -65,8 +65,6 @@ class LaSalleAgent(Player):
             piece_types.append(samples[i].piece_at(move.from_square).piece_type)
             move.from_square = chess.square_mirror(move.from_square)
             move.to_square = chess.square_mirror(move.to_square)
-            #move.from_square = chess.square(chess.square_file(move.from_square), 7 - chess.square_rank(move.from_square))
-            #move.to_square = chess.square(chess.square_file(move.to_square), 7 - chess.square_rank(move.to_square))
 
             for j in range(10):
                 random_moves.append(random.choice(list(samples[i].pseudo_legal_moves)))
@@ -76,13 +74,6 @@ class LaSalleAgent(Player):
 
         chances = [stockfish_vs_random / len(moves) for move in moves]
         random_chances = [(1 - stockfish_vs_random) / len(random_moves) for move in random_moves]
-        #piece_types = []
-        #for board, move in zip(samples, moves):
-            #piece_types.append(board.piece_at(move.from_square).piece_type)
-        #piece_types = [board.piece_at(move.from_square).piece_type for board, move in zip(samples, moves)]
-
-        #random_chances = [(1 - stockfish_vs_random) / len(random_moves) for move in random_moves]
-        #random_piece_types = [board.piece_at(move.from_square).piece_type for board, move in zip(samples, random_moves)]
 
         moves += random_moves
         chances += random_chances
@@ -124,7 +115,6 @@ class LaSalleAgent(Player):
             (A6, None), (B6, None), (C8, None)
         ]
         """
-        # Hint: until this method is implemented, any senses you make will be lost.
         self.piecewisegrid.handle_sense_result(sense_result)
 
     def choose_move(self, possible_moves, seconds_left):
@@ -196,3 +186,16 @@ class LaSalleAgent(Player):
         :param win_reason: String -- the reason for the game ending
         """
         print("GAME END I THINNK")
+
+if __name__ == "__main__":
+    g = PiecewiseGrid(chess.Board())
+    g.piece_grids[:, :, 4] = np.zeros((8, 8))
+    g.piece_grids[3, 0, 4] = 0.0
+    g.piece_grids[3, 1, 4] = 0.5
+    g.piece_grids[3, 2, 4] = 0.25
+    g.piece_grids[3, 3, 4] = 0.25
+    g.piece_grids[4, 0, 5] = 0.25
+    g.piece_grids[4, 1, 5] = 0.25
+    g.piece_grids[4, 2, 5] = 0.25
+    g.piece_grids[4, 3, 5] = 0.25
+    print(g.num_board_states())

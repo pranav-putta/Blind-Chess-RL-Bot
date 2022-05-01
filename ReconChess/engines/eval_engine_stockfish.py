@@ -59,7 +59,7 @@ class StockFishEvaluationEngine(base.SimulationEngine):
                     board.turn = color
                     board.clear_stack()
 
-                    result = self.engine.play(board, chess.engine.Limit(time=0.05))
+                    result = self.engine.play(board, chess.engine.Limit(depth=1))
                     moves.append(result.move)
                     continue
                 except chess.engine.EngineTerminatedError:
