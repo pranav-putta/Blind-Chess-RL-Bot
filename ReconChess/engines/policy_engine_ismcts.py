@@ -36,20 +36,27 @@ class ISMCTSPolicyEngine(base.PolicyEngine):
         return self.engine_specs[player].ucb_engine
 
     def generate_policy(self, player_info_set: base.InformationSet):
+        player_info_set.propagate_opponent_move([], None, False)
+
         other_info_set = player_info_set.__copy__()
         other_info_set.mirror()
+
         self.mcts(player_info_set.__copy__(), other_info_set)
+        policy = np.zeros((8, 8, 73))
+
+        if len(self.trees[0].children) == 0:
+            # mf reached a terminal game state so don't make any moves
+            return policy
         best_sense = max(self.trees[0].children.values(), key=lambda child: child.total_reward)
         moves = sorted(best_sense.children.values(), key=lambda child: child.total_reward, reverse=True)
 
-        policy = np.zeros((8, 8, 73))
         for node in moves:
             node: base.OpponentNode
-            policy[move_to_feature_index(node.incoming_edge[1])] = node.total_reward
-        top_move = moves[0].incoming_edge[1]
-        out = feature_output_to_move(policy)
-        if out != top_move:
-            print(f'something went wrong, {out} when should be {top_move}')
+            if node.incoming_edge[1] is not None:
+                policy[move_to_feature_index(node.incoming_edge[1])] = node.total_reward
+            else:
+                print(node.incoming_edge)
+
         return policy / policy.sum()
 
     def get_turn(self, player):
@@ -109,14 +116,14 @@ class ISMCTSPolicyEngine(base.PolicyEngine):
 
         game_state.turn = self.get_turn(player)
         sense_location = trees[player].select_child(game_state, self.sense_engine(player))
-        trees[player] = trees[player].traverse(game_state, sense_location)
+        trees[player] = trees[player].traverse(game_state, sense_location, self.sim_engine(player))
 
-        trees[player].expand(game_state)
+        trees[player].expand(game_state, self.sim_engine(player))
         move_action = trees[player].select_child(game_state, self.ucb_engine(player))
 
         for p in [player, not player]:
             game_state.turn = self.get_turn(p)
-            trees[p] = trees[p].traverse(game_state, move_action)
+            trees[p] = trees[p].traverse(game_state, move_action, self.sim_engine(p))
 
         return trees
 
@@ -129,7 +136,7 @@ class ISMCTSPolicyEngine(base.PolicyEngine):
 
         # sense action
         sense_action = trees[player].select_child(game_state, self.sense_engine(player))
-        trees[player] = trees[player].traverse(game_state, sense_action)
+        trees[player] = trees[player].traverse(game_state, sense_action, self.sim_engine(player))
 
         # move action
         move_action = trees[player].select_child(game_state, self.ucb_engine(player))
@@ -137,7 +144,7 @@ class ISMCTSPolicyEngine(base.PolicyEngine):
         # propagate player trees to the next state
         for p in [player, not player]:
             game_state.turn = self.get_turn(p)
-            trees[p] = trees[p].traverse(game_state, move_action)
+            trees[p] = trees[p].traverse(game_state, move_action, self.sim_engine(p))
         return self.select(trees, not player, game_state)
 
     def print_trees(self):

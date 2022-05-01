@@ -19,7 +19,7 @@ class Net(nn.Module):
         self.fc_out_policy = nn.Linear(104, 4672)
 
     def forward(self, x):
-        x = torch.tensor(x.flatten().reshape(1, -1), dtype=torch.float)
+        x = torch.tensor(x.flatten().reshape(10, -1), dtype=torch.float)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
@@ -27,6 +27,7 @@ class Net(nn.Module):
         score = self.fc_out_score(x)
         policy = self.fc_out_policy(x)
         return score, policy
+
 
 
 def move_to_feature_index(move: chess.Move):
@@ -48,7 +49,7 @@ def move_to_feature_index(move: chess.Move):
             direction += 2
         if dx > 0:
             direction += 1
-        dist = abs(dx) - 1
+        dist = abs(dx)
     else:  # knight
         if abs(dx) > abs(dy):
             direction += 4
@@ -66,6 +67,8 @@ direction_enc = [(-1, -1), (1, -1), (-1, 1), (1, 1), (-1, 0), (1, 0), (0, -1), (
 
 
 def feature_output_to_move(policy: np.ndarray):
+    if policy.sum() == 0:
+        return None
     from_rank, from_file, opt = np.unravel_index(np.argmax(policy), policy.shape)
 
     if opt > 63:

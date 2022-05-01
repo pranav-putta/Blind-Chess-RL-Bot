@@ -36,14 +36,19 @@ class MCTSAgent(Player):
         :param color: chess.BLACK or chess.WHITE -- your color assignment for the game
         :param board: chess.Board -- initial board state
         """
-        #sense_engine = PiecewiseSenseEngine()
-        sense_engine = StaticSenseEngine(chess.E4)
-        sim_engine = StockFishEvaluationEngine(depth=1)
+        sense_engine = PiecewiseSenseEngine()
+        sim_engine = StockFishEvaluationEngine(depth=5)
         network_policy_engine = NetworkPolySimEngine(self.network)
-        #ucb_engine = PolicyNetworkUCB(network_policy_engine)
+        ucb_engine = PolicyNetworkUCB(network_policy_engine)
         ucb_engine = ExpUCB()
         self.engine_spec = base.EngineSpec(sense_engine, sim_engine, ucb_engine)
-        self.policy_engine = ISMCTSPolicyEngine(self.engine_spec, num_iters=50)
+        self.policy_engine = ISMCTSPolicyEngine(self.engine_spec, num_iters=100)
+        if color == chess.BLACK:
+            board: chess.Board
+            board.set_piece_at(chess.D1, chess.Piece(chess.KING, chess.WHITE))
+            board.set_piece_at(chess.E1, chess.Piece(chess.QUEEN, chess.WHITE))
+            board.set_piece_at(chess.D8, chess.Piece(chess.KING, chess.BLACK))
+            board.set_piece_at(chess.E8, chess.Piece(chess.QUEEN, chess.BLACK))
         self.info_set = PiecewiseInformationSet(Game.new(board))
         self.color = color
 
@@ -56,8 +61,56 @@ class MCTSAgent(Player):
         """
         if self.color == chess.BLACK:
             captured_square = mirror(captured_square)
-        self.info_set.propagate_opponent_move([], captured_piece, captured_square)
-        print()
+
+        # if self.firstmove:
+        #    self.firstmove = False
+        #   return
+
+        stockfish_vs_random = 0.9
+
+        # num_samples = 50
+        num_samples = self.info_set.size() + 1
+        samples = []
+        for sample in range(num_samples):
+            board = self.info_set.random_sample().truth_board.mirror()
+            board.color = chess.BLACK
+            samples.append(board)
+
+        moves = self.engine_spec.sim_engine.best_moves(samples)
+        moves = [move for move in moves if not move is None]
+        random_moves = []
+        piece_types = []
+        random_piece_types = []
+        # mirrors move to opponent's side
+        for i in range(len(moves)):
+            move = moves[i]
+            piece_types.append(samples[i].piece_at(move.from_square).piece_type)
+            move.from_square = chess.square_mirror(move.from_square)
+            move.to_square = chess.square_mirror(move.to_square)
+            # move.from_square = chess.square(chess.square_file(move.from_square), 7 - chess.square_rank(move.from_square))
+            # move.to_square = chess.square(chess.square_file(move.to_square), 7 - chess.square_rank(move.to_square))
+
+            for j in range(10):
+                random_moves.append(random.choice(list(samples[i].pseudo_legal_moves)))
+                random_piece_types.append(samples[i].piece_at(random_moves[-1].from_square).piece_type)
+
+            samples[i] = samples[i].mirror()
+
+        chances = [stockfish_vs_random / len(moves) for move in moves]
+        random_chances = [(1 - stockfish_vs_random) / len(random_moves) for move in random_moves]
+        # piece_types = []
+        # for board, move in zip(samples, moves):
+        # piece_types.append(board.piece_at(move.from_square).piece_type)
+        # piece_types = [board.piece_at(move.from_square).piece_type for board, move in zip(samples, moves)]
+
+        # random_chances = [(1 - stockfish_vs_random) / len(random_moves) for move in random_moves]
+        # random_piece_types = [board.piece_at(move.from_square).piece_type for board, move in zip(samples, random_moves)]
+
+        moves += random_moves
+        chances += random_chances
+        piece_types += random_piece_types
+
+        self.info_set.propagate_opponent_move(list(zip(moves, piece_types, chances)), captured_piece, captured_square)
 
     def choose_sense(self, possible_sense, possible_moves, seconds_left):
         """
@@ -92,6 +145,7 @@ class MCTSAgent(Player):
         if self.color == chess.BLACK:
             sense_result = mirror_sense_result(sense_result)
         self.info_set.update_with_sense(sense_result)
+        print()
 
     def choose_move(self, possible_moves, seconds_left):
         """

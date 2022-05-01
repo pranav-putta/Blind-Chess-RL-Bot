@@ -53,7 +53,7 @@ class PiecewiseInformationSet(base.InformationSet):
         move, captured_piece = move_result
         self.piecewisegrid.handle_player_move(move, captured_piece)
 
-    def propagate_opponent_move(self, possible_moves: List[chess.Move], captured_square: bool,
+    def propagate_opponent_move(self, possible_moves, captured_square: bool,
                                 captured_piece: chess.Piece):
         self.piecewisegrid.handle_enemy_move(possible_moves, captured_square, captured_piece)
 

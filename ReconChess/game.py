@@ -35,6 +35,7 @@ class Game:
         self.took_to_long_to_move = False
 
         self.move_result = None
+        self.saved_result = ('', [])
 
     def start(self):
         """

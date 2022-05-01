@@ -43,6 +43,7 @@ class Game:
         self.took_to_long_to_move = False
 
         self.move_result = None
+        self.saved_result = ('', [])
 
     def start(self):
         """
@@ -124,11 +125,16 @@ class Game:
         Returns list of legal moves without regard to opponent piece locations. Allows for pawns to move diagonally.
         :return: List(chess.Move)
         """
+
         if self.is_finished:
             return None
-
+        # if self.saved_result[0] == self.truth_board.fen():
+        # return self.saved_result[1]
+        # pass
         return self._moves_without_opponent_pieces(self.truth_board, self.turn) + \
                self._pawn_capture_moves_on(self.truth_board, self.turn)
+        # self.saved_result = (self.truth_board.fen(), result)
+        # return result
 
     ###=== Make move and update board ===###
     def _capture_square_of_move(self, board, move):

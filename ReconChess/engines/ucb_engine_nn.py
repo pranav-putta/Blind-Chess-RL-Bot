@@ -1,7 +1,10 @@
 import math
+import random
 
 from engines.base import UCBEngine, OpponentNode, PolicyEngine, InformationSet
 from typing import List
+
+eps = 1e-3
 
 
 class PolicyNetworkUCB(UCBEngine):
@@ -19,5 +22,7 @@ class PolicyNetworkUCB(UCBEngine):
         for i, child in enumerate(children):
             Q = child.total_reward
             P = self.policy_engine.prob_given_action(policy, child.incoming_edge[0])
-            ucbs.append(Q + self.c_puct * P * (math.sqrt(N_tot) / (1 + child.visit_count)))
+            sc = (child.total_reward / (child.visit_count + eps)) + 5 * math.sqrt(
+                math.log((child.availability_count / (child.visit_count + eps))))
+            ucbs.append(Q + self.c_puct * P * sc + random.randrange(0, 10))
         return ucbs
