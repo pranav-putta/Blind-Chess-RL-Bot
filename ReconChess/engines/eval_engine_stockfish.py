@@ -5,7 +5,7 @@ import numpy as np
 from typing import List
 import util
 
-STOCKFISH_PATH = '/usr/local/Cellar/stockfish/14.1/bin/stockfish'
+STOCKFISH_PATH = 'C:\\Users\\escarlatescu3\\OneDrive - Georgia Institute of Technology\\Desktop\\stockfish_15_x64_avx2.exe'
 EVAL_TIME_LIMIT = 0.05
 
 class StockFishEvaluationEngine(base.SimulationEngine):
@@ -23,7 +23,9 @@ class StockFishEvaluationEngine(base.SimulationEngine):
             score = 0
             #for attempt in range(1, 5):
             try:
-                score = self.engine.analyse(board, chess.engine.Limit(time=EVAL_TIME_LIMIT))['score'].relative.cp
+                if not board.king(chess.BLACK) is None: # if it can't find the king, stockfish can't score the board,
+                    # but it will take a bit to realize that so we save it the trouble
+                    score = self.engine.analyse(board, chess.engine.Limit(depth=1))['score'].relative.cp
                 #score = self.engine.analyse(board, chess.engine.Limit(depth=20))['score'].relative.cp
                 break
             except AttributeError as ae:

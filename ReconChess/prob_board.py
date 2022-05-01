@@ -291,7 +291,7 @@ class PiecewiseGrid:
         self.last_sensed += certainties
         self.last_sensed[self.last_sensed > 1.0] = 1.0
 
-        uncertainty += self.last_sensed
+        #uncertainty += self.last_sensed
         uncertainty += self.base_uncertainty
 
         return uncertainty

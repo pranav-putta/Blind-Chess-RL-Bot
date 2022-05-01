@@ -43,6 +43,7 @@ class LaSalleAgent(Player):
             self.firstmove = False
             return
 
+        """
         stockfish_vs_random = 0.9
 
         #num_samples = 50
@@ -78,12 +79,39 @@ class LaSalleAgent(Player):
         moves += random_moves
         chances += random_chances
         piece_types += random_piece_types
+        """
+        # try fitting against knight moves only
+        moves = []
+        knight_grid = self.piecewisegrid.piece_grids[:, :, 1] + self.piecewisegrid.piece_grids[:, :, 6]
+        for file in range(8):
+            for rank in range(8):
+                if knight_grid[rank, file] > 0:
+                    square = chess.square(file, rank)
+                    moves.extend(self.knight_moves_from_square(square))
+
+        chances = [1.0 / len(moves) for move in moves]
+        piece_types = ['n'] * len(moves)
 
         print("OPPONENT MOVES: ")
         print(moves)
         print(self.piecewisegrid.gen_board())
 
         self.piecewisegrid.handle_enemy_move(list(zip(moves, piece_types, chances)), captured_piece, captured_square)
+
+    def knight_moves_from_square(self, square):
+        file, rank = chess.square_file(square), chess.square_rank(square)
+
+        knight_directions = [(2, 1), (1, 2), (-1, 2), (-2, 1), (1, -2), (2, -1), (-2, -1), (-1, -2)]
+
+        moves = []
+        for dir in knight_directions:
+            upperbound = 8 if self.color == chess.WHITE else 6
+            lowerbound = 2 if self.color == chess.WHITE else 0
+            if file + dir[0] < 8 and file + dir[0] >= 0 and rank + dir[1] < upperbound and rank + dir[1] >= lowerbound:
+                moves.append(chess.Move(square, chess.square(file + dir[0], rank + dir[1])))
+
+        random.shuffle(moves)
+        return moves
 
     def choose_sense(self, possible_sense, possible_moves, seconds_left):
         """

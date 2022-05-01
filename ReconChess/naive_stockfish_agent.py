@@ -16,8 +16,7 @@ import os
 import util
 from player import Player
 
-STOCKFISH_PATH = '/usr/local/Cellar/stockfish/14.1/bin/stockfish'
-
+STOCKFISH_PATH = 'C:\\Users\\escarlatescu3\\OneDrive - Georgia Institute of Technology\\Desktop\\stockfish_15_x64_avx2.exe'
 
 class StockfishAgent2(Player):
 
