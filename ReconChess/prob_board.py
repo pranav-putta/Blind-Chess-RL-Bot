@@ -113,7 +113,7 @@ class PiecewiseGrid:
                 to_file = chess.square_file(move.to_square)
                 to_rank = chess.square_rank(move.to_square)
 
-                prob = self.piece_grids[from_rank, from_file, move_index] * chance
+                prob = self.piece_grids_temp[from_rank, from_file, move_index] * chance
                 self.piece_grids[from_rank, from_file, move_index] -= prob
                 self.piece_grids[to_rank, to_file, move_index] += prob
 
@@ -236,8 +236,8 @@ class PiecewiseGrid:
             self.update_prob_board_from_moves(self.enemy_moves)
 
     def get_board_uncertainty(self):
-        KING_ATTACK = 0.25
-        PIECE_PIN = 0.15
+        KING_ATTACK = 0
+        PIECE_PIN = 0
 
         uncertainty = 0.5 - np.abs(0.5 - self.piece_grids)
 
@@ -254,7 +254,7 @@ class PiecewiseGrid:
             y = rank + dir[1]
             if x < 8 and y < 8 and x >= 0 and y >= 0 and board.piece_at(chess.square(x,y)) == None:
                 try:
-                    uncertainty[y, x, knights] += 3 * KING_ATTACK
+                    uncertainty[y, x, knights] += KING_ATTACK
                 except IndexError as ie:
                     print("ERROR WHEN TRYING TO INDEX KNIGHTS")
                     print(knights)
@@ -347,21 +347,26 @@ class PiecewiseGrid:
                 # if there was no piece in the square previously and there is one there now, we know that piece moved
                 if maxes[rank, file] < 0.001 and not loc[1] is None:
                     piece_type = loc[1].symbol()
-                    self.enemy_moves = [x for x in self.enemy_moves if x[1] == piece_type]
+                    self.enemy_moves = [x for x in self.enemy_moves if x[1] == piece_type and x[0].to_square == loc[0]] # we know the move ended at this square
 
                 # if we know where a piece is for certain, we can make some inferences
                 if maxes[rank, file] > 0.999:
                     piece_index = np.argmax(self.piece_grids[rank, file, :])
                     piece_type = self.piece_types[piece_index]
 
-                    if loc[1] == None:  # if it's no longer there, it must have moved
-                        self.enemy_moves = [x for x in self.enemy_moves if x[1] == piece_type]
+                    if loc[1] == None:  # if it's no longer there, it must have moved. eliminate all moves which don't start from this square and involve this piece
+                        self.enemy_moves = [x for x in self.enemy_moves if x[1] == piece_type and x[0].from_square == loc[0]] # we know the move started at this square
                     elif loc[1].symbol() == piece_type:  # if it's still there, it can't have moved
-                        self.enemy_moves = [x for x in self.enemy_moves if x[1] != piece_type]
+                        self.enemy_moves = [x for x in self.enemy_moves if x[0].from_square != loc[0]]
+
+                    self.enemy_moves = [x for x in self.enemy_moves if x[0].to_square != loc[0] or x[1] == piece_type]
+
+                if loc[1] is None:
+                    self.enemy_moves = [x for x in self.enemy_moves if x[0].to_square != loc[0]]
 
                 # TODO: Add more inferences for how the pieces might have moved
 
-            self.piece_grids = self.piece_grids_temp
+            self.piece_grids = self.piece_grids_temp.copy()
 
             if len(self.enemy_moves) == 0: # We literally have no clue what move the enemy could have made
                 print("The bot has no idea what move the enemy made")

@@ -81,13 +81,14 @@ class LaSalleAgent(Player):
         piece_types += random_piece_types
         """
         # try fitting against knight moves only
+        board = self.piecewisegrid.gen_certain_board() # gen board is slow and not necessarily needed like this here
         moves = []
         knight_grid = self.piecewisegrid.piece_grids[:, :, 1] + self.piecewisegrid.piece_grids[:, :, 6]
         for file in range(8):
             for rank in range(8):
                 if knight_grid[rank, file] > 0:
                     square = chess.square(file, rank)
-                    moves.extend(self.knight_moves_from_square(square))
+                    moves.extend(self.knight_moves_from_square(square, board))
 
         chances = [1.0 / len(moves) for move in moves]
         piece_types = ['n'] * len(moves)
@@ -98,7 +99,7 @@ class LaSalleAgent(Player):
 
         self.piecewisegrid.handle_enemy_move(list(zip(moves, piece_types, chances)), captured_piece, captured_square)
 
-    def knight_moves_from_square(self, square):
+    def knight_moves_from_square(self, square, board):
         file, rank = chess.square_file(square), chess.square_rank(square)
 
         knight_directions = [(2, 1), (1, 2), (-1, 2), (-2, 1), (1, -2), (2, -1), (-2, -1), (-1, -2)]
@@ -107,7 +108,8 @@ class LaSalleAgent(Player):
         for dir in knight_directions:
             upperbound = 8 if self.color == chess.WHITE else 6
             lowerbound = 2 if self.color == chess.WHITE else 0
-            if file + dir[0] < 8 and file + dir[0] >= 0 and rank + dir[1] < upperbound and rank + dir[1] >= lowerbound:
+            if file + dir[0] < 8 and file + dir[0] >= 0 and rank + dir[1] < upperbound and rank + dir[1] >= lowerbound \
+                    and board.piece_at(chess.square(file + dir[0], rank + dir[1])) is None:
                 moves.append(chess.Move(square, chess.square(file + dir[0], rank + dir[1])))
 
         random.shuffle(moves)
@@ -185,6 +187,9 @@ class LaSalleAgent(Player):
                 board.pop()
 
             scores.append(np.sum(score))
+
+        if len(moves) == 0:
+            print("Looks like there're no more moves left.")
 
         #print(moves)
         #print(scores)

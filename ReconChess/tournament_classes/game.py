@@ -15,7 +15,7 @@ from datetime import datetime
 
 class Game:
 
-    def __init__(self, seconds_left=600):
+    def __init__(self, seconds_left=6000):
         self.turn = chess.WHITE  # True for white, False for black
 
         self.truth_board = chess.Board()
