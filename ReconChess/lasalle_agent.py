@@ -136,6 +136,7 @@ class LaSalleAgent(Player):
         :example: choice = chess.A1
         """
         square = self.piecewisegrid.choose_sense()
+        print(self.piecewisegrid.num_board_states())
         print("SENSE CHOSEN")
         print(chess.square_name(square))
         if self.color == chess.BLACK:
@@ -189,11 +190,19 @@ class LaSalleAgent(Player):
 
         for i in range(self.piecewisegrid.num_board_states()):
             board = self.piecewisegrid.gen_board()
-            for piece_type in [chess.KNIGHT, chess.QUEEN, chess.BISHOP, chess.ROOK]:
+            for piece_type, piece_text in [(chess.KNIGHT, 'k'), (chess.QUEEN, 'q'), (chess.BISHOP, 'b'),
+                                           (chess.ROOK, 'r')]:
                 for enemy_square in board.pieces(piece_type, chess.BLACK):
+                    # check uncertainty
+                    sl = [p == piece_text for p in self.piecewisegrid.piece_types]
+                    dist = self.piecewisegrid.piece_grids[:, :, sl].flatten()
+                    entropy = np.sum(dist * np.log2(dist + 1e-10))
+                    if entropy > 0:
+                        continue
                     attackers = board.attackers(chess.WHITE, enemy_square)
                     for attacker_sq in attackers:
-                        if self.sq_dist(chess.D2, enemy_square) < 3:
+                        if self.sq_dist(attacker_sq, enemy_square) < 3 or self.sq_dist(chess.D2,
+                                                                                       enemy_square) < 3 or piece_type == chess.KNIGHT:
                             move = chess.Move(attacker_sq, enemy_square)
                             if self.color == chess.BLACK:
                                 move = flip_move(move)
@@ -201,7 +210,7 @@ class LaSalleAgent(Player):
                             return move
 
         # change this to depend on total uncertainty
-        num_samples = self.piecewisegrid.num_board_states()
+        num_samples = self.piecewisegrid.num_board_states() + 3
         print(f'Testing {num_samples} samples')
         samples = []
         for sample in range(num_samples):
