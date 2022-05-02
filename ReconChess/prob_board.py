@@ -120,7 +120,7 @@ class PiecewiseGrid:
     # possible moves represents a probability distribution. it is stored as a list of tuples of the form (move, piece_type, chance)
     def handle_enemy_move(self, possible_moves: List[Tuple[chess.Move, chess.PieceType, float]], captured_piece: bool, captured_square: chess.Square):
         self.piece_grids_temp = self.piece_grids.copy()
-        self.enemy_moves = possible_moves
+        self.enemy_moves = possible_moves if not captured_piece else []
         if captured_piece: # TODO: Fix this, something here is not quite working
             # print("The enemy captured our piece")
             file = chess.square_file(captured_square)
@@ -236,8 +236,8 @@ class PiecewiseGrid:
             self.update_prob_board_from_moves(self.enemy_moves)
 
     def get_board_uncertainty(self):
-        KING_ATTACK = 0
-        PIECE_PIN = 0
+        KING_ATTACK = 0.25
+        PIECE_PIN = 0.15
 
         uncertainty = 0.5 - np.abs(0.5 - self.piece_grids)
 
@@ -453,7 +453,7 @@ class PiecewiseGrid:
         divider[divider < 0.001] = 1
         self.piece_grids /= divider
 
-        if np.sum(self.piece_grids[:, :, 4] < 0.01):
+        if np.sum(self.piece_grids[:, :, 4]) < 0.01:
             # print("CODE RED WE LOST THE KING!!!!")
             pass
 

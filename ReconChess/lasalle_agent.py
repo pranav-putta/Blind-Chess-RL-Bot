@@ -117,8 +117,8 @@ class LaSalleAgent(Player):
 
         moves = []
         for dir in knight_directions:
-            upperbound = 8 if self.color == chess.WHITE else 6
-            lowerbound = 2 if self.color == chess.WHITE else 0
+            upperbound = 8
+            lowerbound = 0
             if file + dir[0] < 8 and file + dir[0] >= 0 and rank + dir[1] < upperbound and rank + dir[1] >= lowerbound \
                     and board.piece_at(chess.square(file + dir[0], rank + dir[1])) is None:
                 moves.append(chess.Move(square, chess.square(file + dir[0], rank + dir[1])))
@@ -201,7 +201,7 @@ class LaSalleAgent(Player):
                             return move
 
         # change this to depend on total uncertainty
-        num_samples = self.piecewisegrid.num_board_states() + 3
+        num_samples = self.piecewisegrid.num_board_states()
         print(f'Testing {num_samples} samples')
         samples = []
         for sample in range(num_samples):

@@ -24,12 +24,10 @@ class KnightAgent(Player):
             file, rank = chess.square_file(captured_square), chess.square_rank(captured_square)
             if self.policy_engine.leftknightpos == (file, rank):
                 self.policy_engine.leftalive = False
-                if self.policy_engine.leftactive:
-                    self.policy_engine.leftactive = False
+                self.policy_engine.leftactive = False
             elif self.policy_engine.rightknightpos == (file, rank):
                 self.policy_engine.rightalive = False
-                if self.policy_engine.leftactive:
-                    self.policy_engine.leftactive = True
+                self.policy_engine.leftactive = True
 
     def choose_sense(self, possible_sense, possible_moves, seconds_left):
         return self.sense_engine.choose_sense(None)
@@ -55,6 +53,8 @@ class KnightAgent(Player):
         :condition: If you intend to move a pawn for promotion other than Queen, please specify the promotion parameter
         :example: choice = chess.Move(chess.G7, chess.G8, promotion=chess.KNIGHT) *default is Queen
         """
+        if not self.policy_engine.leftalive and not self.policy_engine.rightalive:
+            pass
         path = self.bfs_knight_to_king()
         ns = path[0].to_square
         if self.policy_engine.leftactive:

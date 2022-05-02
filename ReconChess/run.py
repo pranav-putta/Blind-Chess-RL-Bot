@@ -1,7 +1,8 @@
 from util import Configuration
 from play_game import *
 
-ENV = Configuration('mcts_agent.py', [], 'mcts_agent.py', [], True, 1)
+#ENV = Configuration('mcts_agent.py', [], 'mcts_agent.py', [], True, 1)
+ENV = Configuration('lasalle_agent.py', [], 'knight_agent.py', [], True, 1)
 
 wins = 0
 
